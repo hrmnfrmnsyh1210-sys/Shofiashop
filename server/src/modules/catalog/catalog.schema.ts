@@ -1,0 +1,29 @@
+import { z } from 'zod';
+
+export const ListCatalogQuerySchema = z.object({
+  search: z.string().optional(),
+  categorySlug: z.string().optional(),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(24),
+  sort: z.enum(['newest', 'price-asc', 'price-desc', 'name']).default('newest'),
+});
+
+export const CheckoutItemSchema = z.object({
+  productId: z.string().min(1),
+  quantity: z.number().int().positive(),
+});
+
+export const CheckoutSchema = z.object({
+  customerName: z.string().min(1).max(120),
+  customerPhone: z.string().min(6).max(32),
+  shippingAddress: z.string().min(1).max(500),
+  paymentMethod: z
+    .enum(['TRANSFER', 'EWALLET', 'QRIS', 'CASH', 'OTHER'])
+    .default('TRANSFER'),
+  notes: z.string().max(1000).optional().nullable(),
+  shippingFee: z.number().nonnegative().default(0),
+  items: z.array(CheckoutItemSchema).min(1),
+});
+
+export type ListCatalogQuery = z.infer<typeof ListCatalogQuerySchema>;
+export type CheckoutInput = z.infer<typeof CheckoutSchema>;

@@ -1,0 +1,233 @@
+// Sofia Shop POS - Prisma schema
+// Target: TiDB Cloud (MySQL-compatible)
+//
+// TiDB does not support foreign key constraints in the traditional sense,
+// so referential integrity is enforced at the application layer.
+// `relationMode = "prisma"` makes Prisma emulate FK behavior client-side.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  CASHIER
+}
+
+enum TransactionStatus {
+  PENDING
+  PAID
+  VOIDED
+  REFUNDED
+}
+
+enum TransactionChannel {
+  POS
+  ONLINE
+}
+
+enum PaymentMethod {
+  CASH
+  CARD
+  TRANSFER
+  EWALLET
+  QRIS
+  OTHER
+}
+
+enum StockMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  RETURN
+}
+
+enum OnlineOrderStatus {
+  NEW
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(CASHIER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  refreshTokens  RefreshToken[]
+  transactions   Transaction[]
+  stockMovements StockMovement[]
+
+  @@index([email])
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products Product[]
+
+  @@index([slug])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  sku         String   @unique
+  barcode     String?  @unique
+  description String?  @db.Text
+  imageUrl    String?
+  // price in IDR rupiah (no decimals needed for IDR, but keep decimal for safety)
+  price       Decimal  @db.Decimal(14, 2)
+  costPrice   Decimal  @db.Decimal(14, 2) @default(0)
+  stock       Int      @default(0)
+  minStock    Int      @default(0)
+  unit        String   @default("pcs")
+  isActive    Boolean  @default(true)
+  showOnline  Boolean  @default(true)
+  categoryId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  category         Category?         @relation(fields: [categoryId], references: [id])
+  transactionItems TransactionItem[]
+  stockMovements   StockMovement[]
+
+  @@index([categoryId])
+  @@index([sku])
+  @@index([barcode])
+  @@index([isActive])
+}
+
+model Member {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String   @unique
+  email     String?
+  address   String?  @db.Text
+  points    Int      @default(0)
+  notes     String?  @db.Text
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions Transaction[]
+
+  @@index([phone])
+  @@index([name])
+}
+
+model Transaction {
+  id                String             @id @default(cuid())
+  transactionNumber String             @unique
+  channel           TransactionChannel @default(POS)
+  status            TransactionStatus  @default(PAID)
+  paymentMethod     PaymentMethod      @default(CASH)
+
+  cashierId String?
+  memberId  String?
+
+  // online-order-only fields (nullable for POS)
+  customerName    String?
+  customerPhone   String?
+  shippingAddress String?  @db.Text
+  onlineStatus    OnlineOrderStatus?
+
+  subtotal      Decimal @db.Decimal(14, 2)
+  discount      Decimal @db.Decimal(14, 2) @default(0)
+  tax           Decimal @db.Decimal(14, 2) @default(0)
+  shippingFee   Decimal @db.Decimal(14, 2) @default(0)
+  total         Decimal @db.Decimal(14, 2)
+  paymentAmount Decimal @db.Decimal(14, 2) @default(0)
+  changeAmount  Decimal @db.Decimal(14, 2) @default(0)
+
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cashier        User?             @relation(fields: [cashierId], references: [id])
+  member         Member?           @relation(fields: [memberId], references: [id])
+  items          TransactionItem[]
+  stockMovements StockMovement[]
+
+  @@index([cashierId])
+  @@index([memberId])
+  @@index([status])
+  @@index([channel])
+  @@index([createdAt])
+}
+
+model TransactionItem {
+  id            String  @id @default(cuid())
+  transactionId String
+  productId     String
+  productName   String // snapshot
+  sku           String // snapshot
+  quantity      Int
+  unitPrice     Decimal @db.Decimal(14, 2)
+  unitCost      Decimal @db.Decimal(14, 2) @default(0)
+  discount      Decimal @db.Decimal(14, 2) @default(0)
+  subtotal      Decimal @db.Decimal(14, 2)
+
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  product     Product     @relation(fields: [productId], references: [id])
+
+  @@index([transactionId])
+  @@index([productId])
+}
+
+model StockMovement {
+  id            String            @id @default(cuid())
+  productId     String
+  type          StockMovementType
+  quantity      Int // positive integer; direction implied by type
+  stockBefore   Int
+  stockAfter    Int
+  reference     String? // free text e.g. "PO-0001"
+  transactionId String?
+  userId        String?
+  note          String?           @db.Text
+  createdAt     DateTime          @default(now())
+
+  product     Product      @relation(fields: [productId], references: [id])
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+  user        User?        @relation(fields: [userId], references: [id])
+
+  @@index([productId])
+  @@index([transactionId])
+  @@index([userId])
+  @@index([createdAt])
+}

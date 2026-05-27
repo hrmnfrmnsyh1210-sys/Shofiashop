@@ -1,5 +1,5 @@
 {
-  "name": "react-example",
+  "name": "sofia-shop",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -7,28 +7,50 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "build": "vite build",
     "preview": "vite preview",
-    "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit && tsc -p server/tsconfig.json --noEmit",
+    "postinstall": "prisma generate --schema server/prisma/schema.prisma",
+    "vercel-build": "prisma generate --schema server/prisma/schema.prisma && vite build",
+    "prisma:generate": "prisma generate --schema server/prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema server/prisma/schema.prisma",
+    "prisma:deploy": "prisma migrate deploy --schema server/prisma/schema.prisma",
+    "prisma:studio": "prisma studio --schema server/prisma/schema.prisma",
+    "prisma:push": "prisma db push --schema server/prisma/schema.prisma",
+    "seed": "tsx server/prisma/seed.ts",
+    "server:standalone": "tsx watch server/src/index.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
+    "@prisma/client": "^5.22.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "helmet": "^8.0.0",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.546.0",
+    "morgan": "^1.10.0",
+    "motion": "^12.23.24",
+    "mysql2": "^3.11.5",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "react-router-dom": "^6.30.3",
     "vite": "^6.2.3",
-    "express": "^4.21.2",
-    "dotenv": "^17.2.3",
-    "motion": "^12.23.24"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/morgan": "^1.9.9",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
+    "prisma": "^5.22.0",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.3",
-    "@types/express": "^4.17.21"
+    "vite": "^6.2.3"
   }
 }
