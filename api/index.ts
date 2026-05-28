@@ -1,5 +1,5 @@
 // Vercel serverless entry point.
-// Vercel's filesystem routing forwards every request under /api/* to this file.
+// All requests under /api/* are rewritten to this file by vercel.json.
 // We delegate to the same Express app used in dev.
 
 import { buildApp } from '../server/src/app.js';
