@@ -7,6 +7,8 @@ export interface AccessTokenPayload {
   sub: string;
   email: string;
   role: UserRole;
+  // null for SUPER_ADMIN
+  tenantId: string | null;
 }
 
 export interface RefreshTokenPayload {

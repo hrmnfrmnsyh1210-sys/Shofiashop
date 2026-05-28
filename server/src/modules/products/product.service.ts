@@ -14,8 +14,9 @@ const parseSort = (sort: ListProductQuery['sort']): Prisma.ProductOrderByWithRel
 };
 
 export const productService = {
-  list: async (q: ListProductQuery) => {
+  list: async (tenantId: string, q: ListProductQuery) => {
     const where: Prisma.ProductWhereInput = {
+      tenantId,
       ...(q.isActive !== undefined ? { isActive: q.isActive } : {}),
       ...(q.showOnline !== undefined ? { showOnline: q.showOnline } : {}),
       ...(q.categoryId ? { categoryId: q.categoryId } : {}),
@@ -30,7 +31,6 @@ export const productService = {
         : {}),
     };
 
-    // Post-filter for lowStock since Prisma can't compare two columns directly
     const baseFindArgs: Prisma.ProductFindManyArgs = {
       where,
       orderBy: parseSort(q.sort),
@@ -38,8 +38,6 @@ export const productService = {
     };
 
     if (q.lowStock) {
-      // pull all matches (no pagination via DB) — fine for SMB catalogs;
-      // refactor to raw SQL if catalog grows large.
       const allItems = await prisma.product.findMany(baseFindArgs);
       const filtered = allItems.filter((p) => p.stock <= p.minStock);
       const start = (q.page - 1) * q.pageSize;
@@ -62,27 +60,28 @@ export const productService = {
     return { items, total, page: q.page, pageSize: q.pageSize };
   },
 
-  get: async (id: string) => {
-    const product = await prisma.product.findUnique({
-      where: { id },
+  get: async (tenantId: string, id: string) => {
+    const product = await prisma.product.findFirst({
+      where: { id, tenantId },
       include: { category: true },
     });
     if (!product) throw notFound('Product not found');
     return product;
   },
 
-  getByBarcode: async (barcode: string) => {
-    const product = await prisma.product.findUnique({
-      where: { barcode },
+  getByBarcode: async (tenantId: string, barcode: string) => {
+    const product = await prisma.product.findFirst({
+      where: { tenantId, barcode },
       include: { category: true },
     });
     if (!product) throw notFound('Product not found');
     return product;
   },
 
-  create: async (input: CreateProductInput) => {
+  create: async (tenantId: string, input: CreateProductInput) => {
     return prisma.product.create({
       data: {
+        tenantId,
         name: input.name,
         sku: input.sku,
         barcode: input.barcode ?? undefined,
@@ -101,8 +100,8 @@ export const productService = {
     });
   },
 
-  update: async (id: string, input: UpdateProductInput) => {
-    await productService.get(id);
+  update: async (tenantId: string, id: string, input: UpdateProductInput) => {
+    await productService.get(tenantId, id);
     return prisma.product.update({
       where: { id },
       data: {
@@ -126,8 +125,8 @@ export const productService = {
     });
   },
 
-  remove: async (id: string) => {
-    await productService.get(id);
+  remove: async (tenantId: string, id: string) => {
+    await productService.get(tenantId, id);
     await prisma.product.update({ where: { id }, data: { isActive: false } });
     return { success: true };
   },

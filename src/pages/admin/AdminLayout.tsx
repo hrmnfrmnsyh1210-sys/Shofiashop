@@ -12,6 +12,7 @@ import {
   LogOut,
   Store,
   Menu,
+  Settings as SettingsIcon,
   X,
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
@@ -26,10 +27,11 @@ const ALL_NAV: Array<{ to: string; label: string; icon: typeof LayoutDashboard; 
   { to: '/admin/transactions', label: 'Transaksi', icon: Receipt },
   { to: '/admin/stock', label: 'Stok', icon: Boxes, roles: ['ADMIN', 'MANAGER'] },
   { to: '/admin/reports', label: 'Laporan', icon: LineChart, roles: ['ADMIN', 'MANAGER'] },
+  { to: '/admin/settings', label: 'Pengaturan Toko', icon: SettingsIcon, roles: ['ADMIN'] },
 ];
 
 export default function AdminLayout() {
-  const { user, logout, hasRole } = useAuth();
+  const { user, tenant, logout, hasRole } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -49,13 +51,18 @@ export default function AdminLayout() {
         }`}
       >
         <div className="h-16 flex items-center justify-between px-5 border-b border-slate-200">
-          <div className="flex items-center gap-2">
-            <div className="bg-rose-500 p-1.5 rounded-lg">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="bg-rose-500 p-1.5 rounded-lg shrink-0">
               <Store className="w-4 h-4 text-white" />
             </div>
-            <span className="font-bold text-lg tracking-tight text-slate-900">
-              ComPos<span className="text-rose-500">.</span>
-            </span>
+            <div className="min-w-0">
+              <div className="font-bold text-sm tracking-tight text-slate-900 truncate">
+                {tenant?.name ?? 'ComPos'}
+              </div>
+              {tenant?.slug && (
+                <div className="text-[10px] text-slate-400 font-mono truncate">/s/{tenant.slug}</div>
+              )}
+            </div>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="md:hidden text-slate-400 hover:text-slate-700">
             <X className="w-5 h-5" />

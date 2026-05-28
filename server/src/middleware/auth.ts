@@ -11,7 +11,13 @@ export const requireAuth: RequestHandler = (req, _res, next) => {
   const token = header.slice('Bearer '.length).trim();
   try {
     const payload = verifyAccessToken(token);
-    req.user = { id: payload.sub, email: payload.email, role: payload.role };
+    req.user = {
+      id: payload.sub,
+      email: payload.email,
+      role: payload.role,
+      tenantId: payload.tenantId ?? null,
+    };
+    if (payload.tenantId) req.tenantId = payload.tenantId;
     next();
   } catch {
     next(unauthorized('Invalid or expired token'));
@@ -27,3 +33,13 @@ export const requireRole =
     }
     next();
   };
+
+// Ensures the request is scoped to a tenant (rejects SUPER_ADMIN that
+// hasn't picked a tenant). Use AFTER requireAuth on tenant-scoped routes.
+export const requireTenant: RequestHandler = (req, _res, next) => {
+  if (!req.user) return next(unauthorized());
+  if (!req.tenantId) {
+    return next(forbidden('No tenant scope on this request'));
+  }
+  next();
+};

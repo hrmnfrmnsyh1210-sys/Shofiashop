@@ -8,15 +8,21 @@ import { unauthorized } from '../../lib/httpError.js';
 
 const router = Router();
 
-// Public registration is restricted to admins-only. If you need bootstrap,
-// use the seed script (npm run seed) for the first admin user.
+// Register a new user. Tenant admins create users within their tenant;
+// super admins can create users for any tenant by passing `tenantId`.
 router.post(
   '/register',
   requireAuth,
-  requireRole('ADMIN'),
+  requireRole('SUPER_ADMIN', 'ADMIN'),
   validate(RegisterSchema),
   asyncHandler(async (req, res) => {
-    const result = await authService.register(req.body);
+    if (!req.user) throw unauthorized();
+    const { tenantId, ...input } = req.body;
+    const result = await authService.register(
+      input,
+      { role: req.user.role, tenantId: req.user.tenantId },
+      tenantId ?? null,
+    );
     res.status(201).json(result);
   }),
 );
@@ -53,8 +59,8 @@ router.get(
   requireAuth,
   asyncHandler(async (req, res) => {
     if (!req.user) throw unauthorized();
-    const user = await authService.me(req.user.id);
-    res.json({ user });
+    const result = await authService.me(req.user.id);
+    res.json(result);
   }),
 );
 

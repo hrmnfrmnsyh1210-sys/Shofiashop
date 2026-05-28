@@ -1,11 +1,20 @@
 import { z } from 'zod';
 
+// imageUrl accepts http(s) URLs or base64 data URLs (admin uploads).
+const ImageUrlSchema = z
+  .string()
+  .max(2_000_000) // ~2 MB base64 cap
+  .refine(
+    (v) => v.startsWith('data:image/') || /^https?:\/\//.test(v),
+    'imageUrl must be an http(s) URL or a data:image/* base64 string',
+  );
+
 export const CreateProductSchema = z.object({
   name: z.string().min(1).max(200),
   sku: z.string().min(1).max(64),
   barcode: z.string().max(64).optional().nullable(),
   description: z.string().max(5000).optional().nullable(),
-  imageUrl: z.string().url().max(2000).optional().nullable(),
+  imageUrl: ImageUrlSchema.optional().nullable(),
   price: z.number().nonnegative(),
   costPrice: z.number().nonnegative().default(0),
   stock: z.number().int().nonnegative().default(0),

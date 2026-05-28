@@ -4,6 +4,7 @@ import { ShoppingBag, ChevronLeft, Loader2, AlertCircle } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { useCart } from '../../lib/cart';
 import { rupiah } from '../../lib/format';
+import { useStore } from '../../lib/store';
 import type { CheckoutResponse } from '../../lib/types';
 
 type PayMethod = 'TRANSFER' | 'EWALLET' | 'QRIS' | 'CASH' | 'OTHER';
@@ -18,6 +19,7 @@ const PAY_METHODS: { value: PayMethod; label: string; hint: string }[] = [
 export default function Checkout() {
   const { lines, subtotal, clear, itemCount } = useCart();
   const navigate = useNavigate();
+  const { slug, path } = useStore();
 
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
@@ -51,7 +53,7 @@ export default function Checkout() {
   }, [customerName, customerPhone, shippingAddress]);
 
   if (lines.length === 0) {
-    return <Navigate to="/shop/cart" replace />;
+    return <Navigate to={path('cart')} replace />;
   }
 
   const shippingFeeN = Math.max(0, Number(shippingFee) || 0);
@@ -63,7 +65,7 @@ export default function Checkout() {
     setSubmitting(true);
     try {
       const res = await api.post<CheckoutResponse>(
-        '/catalog/checkout',
+        `/stores/${slug}/checkout`,
         {
           customerName: customerName.trim(),
           customerPhone: customerPhone.trim(),
@@ -76,7 +78,7 @@ export default function Checkout() {
         { skipAuth: true },
       );
       clear();
-      navigate(`/shop/order/${res.orderNumber}`, { state: { order: res, total } });
+      navigate(path(`order/${res.orderNumber}`), { state: { order: res, total } });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Gagal memproses pesanan');
     } finally {
@@ -86,7 +88,7 @@ export default function Checkout() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-      <Link to="/shop/cart" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900 mb-4">
+      <Link to={path('cart')} className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900 mb-4">
         <ChevronLeft className="w-4 h-4" /> Kembali ke keranjang
       </Link>
       <h1 className="text-2xl font-bold text-slate-900 mb-6">Checkout</h1>

@@ -4,12 +4,14 @@ import { ChevronLeft, Minus, Plus, ShoppingBag, Check } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { useCart } from '../../lib/cart';
 import { rupiah } from '../../lib/format';
+import { useStore } from '../../lib/store';
 import type { CatalogProduct } from '../../lib/types';
 
 export default function ProductDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { add } = useCart();
+  const { slug, path } = useStore();
 
   const [product, setProduct] = useState<CatalogProduct | null>(null);
   const [loading, setLoading] = useState(true);
@@ -18,10 +20,10 @@ export default function ProductDetail() {
   const [added, setAdded] = useState(false);
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || !slug) return;
     setLoading(true);
     api
-      .get<CatalogProduct>(`/catalog/products/${id}`, { skipAuth: true })
+      .get<CatalogProduct>(`/stores/${slug}/products/${id}`, { skipAuth: true })
       .then((p) => {
         setProduct(p);
         setError(null);
@@ -36,7 +38,7 @@ export default function ProductDetail() {
         );
       })
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, slug]);
 
   const handleAdd = () => {
     if (!product) return;
@@ -74,7 +76,7 @@ export default function ProductDetail() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
         <div className="text-slate-500 mb-4">{error ?? 'Produk tidak ditemukan'}</div>
-        <Link to="/shop" className="text-rose-500 font-semibold hover:underline">
+        <Link to={path('')} className="text-rose-500 font-semibold hover:underline">
           ← Kembali ke katalog
         </Link>
       </div>
@@ -104,7 +106,7 @@ export default function ProductDetail() {
         <div className="flex flex-col">
           {product.category && (
             <Link
-              to={`/shop?category=${product.category.slug}`}
+              to={path(`?category=${product.category.slug}`)}
               className="text-xs uppercase tracking-wider text-slate-500 font-semibold mb-2 hover:text-rose-500"
             >
               {product.category.name}
@@ -166,7 +168,7 @@ export default function ProductDetail() {
                   )}
                 </button>
                 <Link
-                  to="/shop/cart"
+                  to={path('cart')}
                   onClick={handleAdd}
                   className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 rounded-xl transition-colors text-center"
                 >

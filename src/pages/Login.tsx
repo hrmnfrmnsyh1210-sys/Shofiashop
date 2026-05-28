@@ -8,7 +8,7 @@ export default function Login() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from ?? '/admin';
+  const fallback = (location.state as { from?: string } | null)?.from;
 
   const [email, setEmail] = useState('admin@sofiashop.local');
   const [password, setPassword] = useState('');
@@ -16,17 +16,21 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const homeFor = (role: string | undefined) =>
+    fallback ?? (role === 'SUPER_ADMIN' ? '/super' : '/admin');
+
   useEffect(() => {
-    if (user) navigate(from, { replace: true });
-  }, [user, navigate, from]);
+    if (user) navigate(homeFor(user.role), { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, navigate]);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsSubmitting(true);
     try {
-      await login(email.trim().toLowerCase(), password);
-      navigate(from, { replace: true });
+      const next = await login(email.trim().toLowerCase(), password);
+      navigate(homeFor(next.role), { replace: true });
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Login gagal. Coba lagi.');
     } finally {

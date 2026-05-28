@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { badRequest, notFound } from '../../lib/httpError.js';
 import type {
@@ -7,8 +8,9 @@ import type {
 } from './member.schema.js';
 
 export const memberService = {
-  list: async (q: ListMemberQuery) => {
-    const where = {
+  list: async (tenantId: string, q: ListMemberQuery) => {
+    const where: Prisma.MemberWhereInput = {
+      tenantId,
       ...(q.isActive !== undefined ? { isActive: q.isActive } : {}),
       ...(q.search
         ? {
@@ -32,21 +34,22 @@ export const memberService = {
     return { items, total, page: q.page, pageSize: q.pageSize };
   },
 
-  get: async (id: string) => {
-    const member = await prisma.member.findUnique({ where: { id } });
+  get: async (tenantId: string, id: string) => {
+    const member = await prisma.member.findFirst({ where: { id, tenantId } });
     if (!member) throw notFound('Member not found');
     return member;
   },
 
-  getByPhone: async (phone: string) => {
-    const member = await prisma.member.findUnique({ where: { phone } });
+  getByPhone: async (tenantId: string, phone: string) => {
+    const member = await prisma.member.findFirst({ where: { tenantId, phone } });
     if (!member) throw notFound('Member not found');
     return member;
   },
 
-  create: async (input: CreateMemberInput) => {
+  create: async (tenantId: string, input: CreateMemberInput) => {
     return prisma.member.create({
       data: {
+        tenantId,
         name: input.name,
         phone: input.phone,
         email: input.email ?? undefined,
@@ -57,8 +60,8 @@ export const memberService = {
     });
   },
 
-  update: async (id: string, input: UpdateMemberInput) => {
-    await memberService.get(id);
+  update: async (tenantId: string, id: string, input: UpdateMemberInput) => {
+    await memberService.get(tenantId, id);
     return prisma.member.update({
       where: { id },
       data: {
@@ -72,14 +75,14 @@ export const memberService = {
     });
   },
 
-  remove: async (id: string) => {
-    await memberService.get(id);
+  remove: async (tenantId: string, id: string) => {
+    await memberService.get(tenantId, id);
     await prisma.member.update({ where: { id }, data: { isActive: false } });
     return { success: true };
   },
 
-  adjustPoints: async (id: string, delta: number) => {
-    const member = await memberService.get(id);
+  adjustPoints: async (tenantId: string, id: string, delta: number) => {
+    const member = await memberService.get(tenantId, id);
     const next = member.points + delta;
     if (next < 0) throw badRequest('Resulting points cannot be negative');
     return prisma.member.update({

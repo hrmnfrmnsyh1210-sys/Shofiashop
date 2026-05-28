@@ -1,4 +1,4 @@
-// Sofia Shop POS - Prisma schema
+// Sofia Shop POS - Prisma schema (multi-tenant)
 // Target: TiDB Cloud (MySQL-compatible)
 //
 // TiDB does not support foreign key constraints in the traditional sense,
@@ -16,6 +16,7 @@ datasource db {
 }
 
 enum UserRole {
+  SUPER_ADMIN
   ADMIN
   MANAGER
   CASHIER
@@ -58,8 +59,36 @@ enum OnlineOrderStatus {
   CANCELLED
 }
 
+model Tenant {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  customDomain String?  @unique
+  description  String?  @db.Text
+  whatsapp     String?
+  email        String?
+  address      String?  @db.Text
+  logoUrl      String?  @db.LongText
+  bankInfo     String?  @db.Text
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  users          User[]
+  categories     Category[]
+  products       Product[]
+  members        Member[]
+  transactions   Transaction[]
+  stockMovements StockMovement[]
+
+  @@index([slug])
+  @@index([customDomain])
+}
+
 model User {
   id           String   @id @default(cuid())
+  // null for SUPER_ADMIN; required for tenant-scoped roles
+  tenantId     String?
   name         String
   email        String   @unique
   passwordHash String
@@ -68,10 +97,12 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  tenant         Tenant?         @relation(fields: [tenantId], references: [id])
   refreshTokens  RefreshToken[]
   transactions   Transaction[]
   stockMovements StockMovement[]
 
+  @@index([tenantId])
   @@index([email])
 }
 
@@ -91,25 +122,30 @@ model RefreshToken {
 
 model Category {
   id          String   @id @default(cuid())
+  tenantId    String
   name        String
-  slug        String   @unique
+  slug        String
   description String?  @db.Text
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
   products Product[]
 
+  @@unique([tenantId, slug])
+  @@index([tenantId])
   @@index([slug])
 }
 
 model Product {
   id          String   @id @default(cuid())
+  tenantId    String
   name        String
-  sku         String   @unique
-  barcode     String?  @unique
+  sku         String
+  barcode     String?
   description String?  @db.Text
-  imageUrl    String?
+  imageUrl    String?  @db.LongText
   // price in IDR rupiah (no decimals needed for IDR, but keep decimal for safety)
   price       Decimal  @db.Decimal(14, 2)
   costPrice   Decimal  @db.Decimal(14, 2) @default(0)
@@ -122,10 +158,14 @@ model Product {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  tenant           Tenant            @relation(fields: [tenantId], references: [id])
   category         Category?         @relation(fields: [categoryId], references: [id])
   transactionItems TransactionItem[]
   stockMovements   StockMovement[]
 
+  @@unique([tenantId, sku])
+  @@unique([tenantId, barcode])
+  @@index([tenantId])
   @@index([categoryId])
   @@index([sku])
   @@index([barcode])
@@ -134,8 +174,9 @@ model Product {
 
 model Member {
   id        String   @id @default(cuid())
+  tenantId  String
   name      String
-  phone     String   @unique
+  phone     String
   email     String?
   address   String?  @db.Text
   points    Int      @default(0)
@@ -144,14 +185,18 @@ model Member {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  tenant       Tenant        @relation(fields: [tenantId], references: [id])
   transactions Transaction[]
 
+  @@unique([tenantId, phone])
+  @@index([tenantId])
   @@index([phone])
   @@index([name])
 }
 
 model Transaction {
   id                String             @id @default(cuid())
+  tenantId          String
   transactionNumber String             @unique
   channel           TransactionChannel @default(POS)
   status            TransactionStatus  @default(PAID)
@@ -178,11 +223,13 @@ model Transaction {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  tenant         Tenant            @relation(fields: [tenantId], references: [id])
   cashier        User?             @relation(fields: [cashierId], references: [id])
   member         Member?           @relation(fields: [memberId], references: [id])
   items          TransactionItem[]
   stockMovements StockMovement[]
 
+  @@index([tenantId])
   @@index([cashierId])
   @@index([memberId])
   @@index([status])
@@ -211,6 +258,7 @@ model TransactionItem {
 
 model StockMovement {
   id            String            @id @default(cuid())
+  tenantId      String
   productId     String
   type          StockMovementType
   quantity      Int // positive integer; direction implied by type
@@ -222,10 +270,12 @@ model StockMovement {
   note          String?           @db.Text
   createdAt     DateTime          @default(now())
 
+  tenant      Tenant       @relation(fields: [tenantId], references: [id])
   product     Product      @relation(fields: [productId], references: [id])
   transaction Transaction? @relation(fields: [transactionId], references: [id])
   user        User?        @relation(fields: [userId], references: [id])
 
+  @@index([tenantId])
   @@index([productId])
   @@index([transactionId])
   @@index([userId])

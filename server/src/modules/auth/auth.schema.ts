@@ -4,7 +4,8 @@ export const RegisterSchema = z.object({
   name: z.string().min(2).max(120),
   email: z.string().email().toLowerCase(),
   password: z.string().min(8).max(128),
-  role: z.enum(['ADMIN', 'MANAGER', 'CASHIER']).default('CASHIER'),
+  role: z.enum(['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'CASHIER']).default('CASHIER'),
+  tenantId: z.string().optional(),
 });
 
 export const LoginSchema = z.object({

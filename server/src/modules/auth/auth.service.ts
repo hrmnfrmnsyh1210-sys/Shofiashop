@@ -34,6 +34,7 @@ const issueTokens = async (user: User) => {
     sub: user.id,
     email: user.email,
     role: user.role,
+    tenantId: user.tenantId,
   });
   const jti = newJti();
   const refreshToken = signRefreshToken({ sub: user.id, jti });
@@ -52,14 +53,36 @@ const sanitize = (user: User) => ({
   name: user.name,
   email: user.email,
   role: user.role,
+  tenantId: user.tenantId,
   isActive: user.isActive,
   createdAt: user.createdAt,
 });
 
 export const authService = {
-  register: async (input: RegisterInput) => {
+  // Tenant admins can only create users in their own tenant.
+  // SUPER_ADMINs can specify a tenantId (or omit for another super admin).
+  register: async (
+    input: RegisterInput,
+    actor: { role: User['role']; tenantId: string | null },
+    targetTenantId: string | null,
+  ) => {
     const existing = await prisma.user.findUnique({ where: { email: input.email } });
     if (existing) throw conflict('Email already registered');
+
+    if (input.role === 'SUPER_ADMIN' && actor.role !== 'SUPER_ADMIN') {
+      throw conflict('Only super admins can create super admins');
+    }
+
+    let tenantId: string | null;
+    if (input.role === 'SUPER_ADMIN') {
+      tenantId = null;
+    } else if (actor.role === 'SUPER_ADMIN') {
+      tenantId = targetTenantId;
+      if (!tenantId) throw conflict('tenantId required for non-super-admin users');
+    } else {
+      tenantId = actor.tenantId;
+      if (!tenantId) throw conflict('Actor has no tenant context');
+    }
 
     const user = await prisma.user.create({
       data: {
@@ -67,6 +90,7 @@ export const authService = {
         email: input.email,
         role: input.role,
         passwordHash: await hashPassword(input.password),
+        tenantId,
       },
     });
     const tokens = await issueTokens(user);
@@ -74,12 +98,28 @@ export const authService = {
   },
 
   login: async (input: LoginInput) => {
-    const user = await prisma.user.findUnique({ where: { email: input.email } });
+    const user = await prisma.user.findUnique({
+      where: { email: input.email },
+      include: { tenant: true },
+    });
     if (!user || !user.isActive) throw unauthorized('Invalid credentials');
+    if (user.role !== 'SUPER_ADMIN' && user.tenant && !user.tenant.isActive) {
+      throw unauthorized('Toko sedang nonaktif. Hubungi administrator platform.');
+    }
     const ok = await verifyPassword(input.password, user.passwordHash);
     if (!ok) throw unauthorized('Invalid credentials');
     const tokens = await issueTokens(user);
-    return { user: sanitize(user), ...tokens };
+    return {
+      user: sanitize(user),
+      tenant: user.tenant
+        ? {
+            id: user.tenant.id,
+            name: user.tenant.name,
+            slug: user.tenant.slug,
+          }
+        : null,
+      ...tokens,
+    };
   },
 
   refresh: async (refreshToken: string) => {
@@ -121,8 +161,20 @@ export const authService = {
   },
 
   me: async (userId: string) => {
-    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { tenant: true },
+    });
     if (!user) throw unauthorized();
-    return sanitize(user);
+    return {
+      user: sanitize(user),
+      tenant: user.tenant
+        ? {
+            id: user.tenant.id,
+            name: user.tenant.name,
+            slug: user.tenant.slug,
+          }
+        : null,
+    };
   },
 };

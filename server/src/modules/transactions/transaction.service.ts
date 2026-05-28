@@ -11,8 +11,9 @@ import type {
 const D = (n: number | Prisma.Decimal) => new Prisma.Decimal(n);
 
 export const transactionService = {
-  list: async (q: ListTransactionQuery) => {
+  list: async (tenantId: string, q: ListTransactionQuery) => {
     const where: Prisma.TransactionWhereInput = {
+      tenantId,
       ...(q.channel ? { channel: q.channel } : {}),
       ...(q.status ? { status: q.status } : {}),
       ...(q.paymentMethod ? { paymentMethod: q.paymentMethod } : {}),
@@ -54,9 +55,9 @@ export const transactionService = {
     return { items, total, page: q.page, pageSize: q.pageSize };
   },
 
-  get: async (id: string) => {
-    const trx = await prisma.transaction.findUnique({
-      where: { id },
+  get: async (tenantId: string, id: string) => {
+    const trx = await prisma.transaction.findFirst({
+      where: { id, tenantId },
       include: {
         items: true,
         member: true,
@@ -67,23 +68,23 @@ export const transactionService = {
     return trx;
   },
 
-  create: async (input: CreateTransactionInput, cashierId?: string) => {
+  create: async (tenantId: string, input: CreateTransactionInput, cashierId?: string) => {
     if (input.memberId) {
-      const member = await prisma.member.findUnique({ where: { id: input.memberId } });
+      const member = await prisma.member.findFirst({
+        where: { id: input.memberId, tenantId },
+      });
       if (!member) throw badRequest('Member not found');
     }
 
-    // Load product snapshots up-front.
     const productIds = input.items.map((i) => i.productId);
     const products = await prisma.product.findMany({
-      where: { id: { in: productIds } },
+      where: { id: { in: productIds }, tenantId },
     });
     if (products.length !== productIds.length) {
       throw badRequest('One or more products not found');
     }
     const productMap = new Map(products.map((p) => [p.id, p]));
 
-    // Validate stock & compute totals
     let subtotal = D(0);
     const itemRows = input.items.map((it) => {
       const product = productMap.get(it.productId)!;
@@ -118,7 +119,6 @@ export const transactionService = {
     if (total.isNegative()) throw badRequest('Total cannot be negative');
 
     const paymentAmount = D(input.paymentAmount);
-    // For POS CASH, paymentAmount should cover total. For online/non-cash, allow 0 (pending).
     let status: 'PAID' | 'PENDING' = 'PAID';
     let changeAmount = D(0);
 
@@ -142,6 +142,7 @@ export const transactionService = {
     return prisma.$transaction(async (tx) => {
       const trx = await tx.transaction.create({
         data: {
+          tenantId,
           transactionNumber,
           channel: input.channel,
           status,
@@ -165,9 +166,6 @@ export const transactionService = {
         include: { items: true },
       });
 
-      // Decrement stock + record stock movements (only if PAID; PENDING reserves nothing yet)
-      // Decision: decrement immediately for both PAID and PENDING. If the trx is later voided
-      // we'll restore. For online orders this matches "reserved on order".
       for (const row of itemRows) {
         const product = productMap.get(row.productId)!;
         const stockBefore = product.stock;
@@ -178,6 +176,7 @@ export const transactionService = {
         });
         await tx.stockMovement.create({
           data: {
+            tenantId,
             productId: product.id,
             type: 'OUT',
             quantity: row.quantity,
@@ -190,7 +189,6 @@ export const transactionService = {
         });
       }
 
-      // Award points: 1 point per Rp 10,000 spent (simple default)
       if (input.memberId) {
         const pointsEarned = Math.floor(Number(total) / 10000);
         if (pointsEarned > 0) {
@@ -205,13 +203,12 @@ export const transactionService = {
     });
   },
 
-  void: async (id: string, userId?: string) => {
-    const trx = await transactionService.get(id);
+  void: async (tenantId: string, id: string, userId?: string) => {
+    const trx = await transactionService.get(tenantId, id);
     if (trx.status === 'VOIDED') throw badRequest('Transaction already voided');
     if (trx.status === 'REFUNDED') throw badRequest('Cannot void a refunded transaction');
 
     return prisma.$transaction(async (tx) => {
-      // Restore stock
       for (const item of trx.items) {
         const product = await tx.product.findUnique({
           where: { id: item.productId },
@@ -225,6 +222,7 @@ export const transactionService = {
         });
         await tx.stockMovement.create({
           data: {
+            tenantId,
             productId: product.id,
             type: 'RETURN',
             quantity: item.quantity,
@@ -237,7 +235,6 @@ export const transactionService = {
         });
       }
 
-      // Reverse member points (best-effort)
       if (trx.memberId) {
         const pointsEarned = Math.floor(Number(trx.total) / 10000);
         if (pointsEarned > 0) {
@@ -260,8 +257,12 @@ export const transactionService = {
     });
   },
 
-  updateOnlineStatus: async (id: string, input: UpdateOnlineStatusInput) => {
-    const trx = await transactionService.get(id);
+  updateOnlineStatus: async (
+    tenantId: string,
+    id: string,
+    input: UpdateOnlineStatusInput,
+  ) => {
+    const trx = await transactionService.get(tenantId, id);
     if (trx.channel !== 'ONLINE') {
       throw badRequest('Only ONLINE transactions have onlineStatus');
     }

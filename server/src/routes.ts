@@ -7,6 +7,10 @@ import transactionRoutes from './modules/transactions/transaction.routes.js';
 import stockRoutes from './modules/stock/stock.routes.js';
 import reportRoutes from './modules/reports/report.routes.js';
 import catalogRoutes from './modules/catalog/catalog.routes.js';
+import {
+  tenantSuperRoutes,
+  tenantAdminRoutes,
+} from './modules/tenants/tenant.routes.js';
 
 const router = Router();
 
@@ -22,7 +26,11 @@ router.use('/transactions', transactionRoutes);
 router.use('/stock', stockRoutes);
 router.use('/reports', reportRoutes);
 
-// Public, customer-facing catalog
-router.use('/catalog', catalogRoutes);
+// Tenant management
+router.use('/super/tenants', tenantSuperRoutes);
+router.use('/admin/tenant', tenantAdminRoutes);
+
+// Public, customer-facing per-tenant storefront: /stores/:slug/...
+router.use('/stores', catalogRoutes);
 
 export default router;

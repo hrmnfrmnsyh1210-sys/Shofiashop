@@ -18,9 +18,50 @@ const orderByFor = (sort: ListCatalogQuery['sort']): Prisma.ProductOrderByWithRe
   }
 };
 
+const tenantPublic = (t: {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  address: string | null;
+  logoUrl: string | null;
+  bankInfo: string | null;
+  customDomain: string | null;
+}) => ({
+  id: t.id,
+  name: t.name,
+  slug: t.slug,
+  description: t.description,
+  whatsapp: t.whatsapp,
+  email: t.email,
+  address: t.address,
+  logoUrl: t.logoUrl,
+  bankInfo: t.bankInfo,
+  customDomain: t.customDomain,
+});
+
 export const catalogService = {
-  listProducts: async (q: ListCatalogQuery) => {
+  getStoreBySlug: async (slug: string) => {
+    const tenant = await prisma.tenant.findFirst({
+      where: { slug, isActive: true },
+    });
+    if (!tenant) throw notFound('Store not found');
+    return tenantPublic(tenant);
+  },
+
+  getStoreByHost: async (host: string) => {
+    const tenant = await prisma.tenant.findFirst({
+      where: { customDomain: host, isActive: true },
+    });
+    if (!tenant) throw notFound('Store not found');
+    return tenantPublic(tenant);
+  },
+
+  listProducts: async (tenantId: string, q: ListCatalogQuery) => {
     const where: Prisma.ProductWhereInput = {
+      tenantId,
       isActive: true,
       showOnline: true,
       stock: { gt: 0 },
@@ -59,9 +100,9 @@ export const catalogService = {
     return { items, total, page: q.page, pageSize: q.pageSize };
   },
 
-  getProduct: async (id: string) => {
+  getProduct: async (tenantId: string, id: string) => {
     const product = await prisma.product.findFirst({
-      where: { id, isActive: true, showOnline: true },
+      where: { id, tenantId, isActive: true, showOnline: true },
       select: {
         id: true,
         name: true,
@@ -78,16 +119,16 @@ export const catalogService = {
     return product;
   },
 
-  listCategories: async () => {
+  listCategories: async (tenantId: string) => {
     return prisma.category.findMany({
-      where: { isActive: true },
+      where: { tenantId, isActive: true },
       orderBy: { name: 'asc' },
       select: { id: true, name: true, slug: true },
     });
   },
 
-  checkout: async (input: CheckoutInput) => {
-    return transactionService.create({
+  checkout: async (tenantId: string, input: CheckoutInput) => {
+    return transactionService.create(tenantId, {
       channel: 'ONLINE',
       paymentMethod: input.paymentMethod,
       memberId: null,

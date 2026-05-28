@@ -2,9 +2,11 @@ import { Link } from 'react-router-dom';
 import { ShoppingBag, Minus, Plus, Trash2, ArrowRight } from 'lucide-react';
 import { useCart } from '../../lib/cart';
 import { rupiah } from '../../lib/format';
+import { useStore } from '../../lib/store';
 
 export default function Cart() {
   const { lines, setQuantity, remove, subtotal, itemCount } = useCart();
+  const { path } = useStore();
 
   if (lines.length === 0) {
     return (
@@ -13,7 +15,7 @@ export default function Cart() {
         <h2 className="text-xl font-bold text-slate-900 mb-1">Keranjang masih kosong</h2>
         <p className="text-slate-500 text-sm mb-6">Yuk pilih produk dulu di katalog.</p>
         <Link
-          to="/shop"
+          to={path('')}
           className="inline-flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white font-bold px-6 py-3 rounded-xl"
         >
           Belanja Sekarang <ArrowRight className="w-4 h-4" />
@@ -35,7 +37,7 @@ export default function Cart() {
               className="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 flex gap-3 sm:gap-4"
             >
               <Link
-                to={`/shop/product/${l.productId}`}
+                to={path(`product/${l.productId}`)}
                 className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 bg-slate-100 rounded-lg overflow-hidden flex items-center justify-center"
               >
                 {l.imageUrl ? (
@@ -47,7 +49,7 @@ export default function Cart() {
 
               <div className="flex-1 min-w-0 flex flex-col">
                 <Link
-                  to={`/shop/product/${l.productId}`}
+                  to={path(`product/${l.productId}`)}
                   className="text-sm font-semibold text-slate-900 hover:text-rose-500 line-clamp-2"
                 >
                   {l.name}
@@ -107,13 +109,13 @@ export default function Cart() {
               <span className="font-bold text-lg text-rose-600">{rupiah(subtotal)}</span>
             </div>
             <Link
-              to="/shop/checkout"
+              to={path('checkout')}
               className="block text-center bg-rose-500 hover:bg-rose-600 text-white font-bold py-3 rounded-xl transition-colors"
             >
               Lanjut ke Checkout
             </Link>
             <Link
-              to="/shop"
+              to={path('')}
               className="block text-center text-xs text-slate-500 hover:text-rose-500"
             >
               ← Lanjut belanja

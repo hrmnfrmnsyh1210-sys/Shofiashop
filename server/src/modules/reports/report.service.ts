@@ -6,15 +6,20 @@ import type {
   TopProductsQuery,
 } from './report.schema.js';
 
-const rangeFilter = (q: ReportRange): Prisma.TransactionWhereInput =>
-  q.from || q.to
+const rangeFilter = (
+  tenantId: string,
+  q: ReportRange,
+): Prisma.TransactionWhereInput => ({
+  tenantId,
+  ...(q.from || q.to
     ? {
         createdAt: {
           ...(q.from ? { gte: q.from } : {}),
           ...(q.to ? { lte: q.to } : {}),
         },
       }
-    : {};
+    : {}),
+});
 
 const defaultRange = (q: ReportRange): { from: Date; to: Date } => {
   const to = q.to ?? new Date();
@@ -30,9 +35,9 @@ const defaultRange = (q: ReportRange): { from: Date; to: Date } => {
 };
 
 export const reportService = {
-  summary: async (q: ReportRange) => {
+  summary: async (tenantId: string, q: ReportRange) => {
     const where: Prisma.TransactionWhereInput = {
-      ...rangeFilter(q),
+      ...rangeFilter(tenantId, q),
       status: 'PAID',
     };
     const agg = await prisma.transaction.aggregate({
@@ -47,7 +52,6 @@ export const reportService = {
       },
     });
 
-    // Gross profit: sum over items of (unitPrice - unitCost) * quantity - discount
     const items = await prisma.transactionItem.findMany({
       where: { transaction: where },
       select: {
@@ -78,11 +82,11 @@ export const reportService = {
     };
   },
 
-  topProducts: async (q: TopProductsQuery) => {
+  topProducts: async (tenantId: string, q: TopProductsQuery) => {
     const grouped = await prisma.transactionItem.groupBy({
       by: ['productId'],
       where: {
-        transaction: { ...rangeFilter(q), status: 'PAID' },
+        transaction: { ...rangeFilter(tenantId, q), status: 'PAID' },
       },
       _sum: {
         quantity: true,
@@ -93,7 +97,7 @@ export const reportService = {
     });
     if (grouped.length === 0) return [];
     const products = await prisma.product.findMany({
-      where: { id: { in: grouped.map((g) => g.productId) } },
+      where: { id: { in: grouped.map((g) => g.productId) }, tenantId },
       select: { id: true, name: true, sku: true, imageUrl: true },
     });
     const map = new Map(products.map((p) => [p.id, p]));
@@ -104,10 +108,11 @@ export const reportService = {
     }));
   },
 
-  dailySales: async (q: DailySalesQuery) => {
+  dailySales: async (tenantId: string, q: DailySalesQuery) => {
     const { from, to } = defaultRange(q);
     const trxs = await prisma.transaction.findMany({
       where: {
+        tenantId,
         status: 'PAID',
         createdAt: { gte: from, lte: to },
       },
@@ -141,9 +146,9 @@ export const reportService = {
     return { from, to, series };
   },
 
-  lowStock: async () => {
+  lowStock: async (tenantId: string) => {
     const products = await prisma.product.findMany({
-      where: { isActive: true },
+      where: { tenantId, isActive: true },
       orderBy: { stock: 'asc' },
     });
     return products

@@ -5,6 +5,9 @@ const API_BASE = '/api/v1';
 const ACCESS_KEY = 'compos.accessToken';
 const REFRESH_KEY = 'compos.refreshToken';
 const USER_KEY = 'compos.user';
+const TENANT_KEY = 'compos.tenant';
+
+type TenantSnapshot = { id: string; name: string; slug: string } | null;
 
 export const tokenStore = {
   getAccess: () => localStorage.getItem(ACCESS_KEY),
@@ -18,6 +21,15 @@ export const tokenStore = {
       return null;
     }
   },
+  getTenant: (): TenantSnapshot => {
+    const raw = localStorage.getItem(TENANT_KEY);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as TenantSnapshot;
+    } catch {
+      return null;
+    }
+  },
   set: (data: AuthResponse) => {
     localStorage.setItem(ACCESS_KEY, data.accessToken);
     localStorage.setItem(REFRESH_KEY, data.refreshToken);
@@ -26,10 +38,15 @@ export const tokenStore = {
   setUser: (user: AuthResponse['user']) => {
     localStorage.setItem(USER_KEY, JSON.stringify(user));
   },
+  setTenant: (tenant: TenantSnapshot) => {
+    if (tenant) localStorage.setItem(TENANT_KEY, JSON.stringify(tenant));
+    else localStorage.removeItem(TENANT_KEY);
+  },
   clear: () => {
     localStorage.removeItem(ACCESS_KEY);
     localStorage.removeItem(REFRESH_KEY);
     localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(TENANT_KEY);
   },
 };
 

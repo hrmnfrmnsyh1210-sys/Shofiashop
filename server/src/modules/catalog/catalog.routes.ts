@@ -1,42 +1,81 @@
 import { Router } from 'express';
 import { asyncHandler } from '../../lib/asyncHandler.js';
 import { validate } from '../../middleware/validate.js';
+import { notFound } from '../../lib/httpError.js';
+import { prisma } from '../../lib/prisma.js';
 import {
   CheckoutSchema,
   ListCatalogQuerySchema,
 } from './catalog.schema.js';
 import { catalogService } from './catalog.service.js';
 
-// Public — no auth.
-const router = Router();
+// Public — no auth. Mounted at /stores
+const router = Router({ mergeParams: true });
+
+// Resolve tenant from :slug for all child routes.
+router.param('slug', async (req, _res, next, slug) => {
+  try {
+    const tenant = await prisma.tenant.findFirst({
+      where: { slug, isActive: true },
+      select: { id: true },
+    });
+    if (!tenant) return next(notFound('Store not found'));
+    (req as { tenantId?: string }).tenantId = tenant.id;
+    next();
+  } catch (e) {
+    next(e);
+  }
+});
 
 router.get(
-  '/products',
+  '/:slug',
+  asyncHandler(async (req, res) => {
+    res.json(await catalogService.getStoreBySlug(req.params.slug));
+  }),
+);
+
+router.get(
+  '/:slug/products',
   validate(ListCatalogQuerySchema, 'query'),
   asyncHandler(async (req, res) => {
-    res.json(await catalogService.listProducts(req.query as never));
+    res.json(
+      await catalogService.listProducts(
+        (req as { tenantId: string }).tenantId,
+        req.query as never,
+      ),
+    );
   }),
 );
 
 router.get(
-  '/products/:id',
+  '/:slug/products/:id',
   asyncHandler(async (req, res) => {
-    res.json(await catalogService.getProduct(req.params.id));
+    res.json(
+      await catalogService.getProduct(
+        (req as { tenantId: string }).tenantId,
+        req.params.id,
+      ),
+    );
   }),
 );
 
 router.get(
-  '/categories',
-  asyncHandler(async (_req, res) => {
-    res.json(await catalogService.listCategories());
+  '/:slug/categories',
+  asyncHandler(async (req, res) => {
+    res.json(
+      await catalogService.listCategories((req as { tenantId: string }).tenantId),
+    );
   }),
 );
 
 router.post(
-  '/checkout',
+  '/:slug/checkout',
   validate(CheckoutSchema),
   asyncHandler(async (req, res) => {
-    const trx = await catalogService.checkout(req.body);
+    const trx = await catalogService.checkout(
+      (req as { tenantId: string }).tenantId,
+      req.body,
+    );
     res.status(201).json({
       orderNumber: trx.transactionNumber,
       total: trx.total,

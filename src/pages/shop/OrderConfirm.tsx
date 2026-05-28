@@ -2,6 +2,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { CheckCircle2, MessageCircle, ArrowRight, Copy } from 'lucide-react';
 import { useState } from 'react';
 import { rupiah } from '../../lib/format';
+import { useStore } from '../../lib/store';
 import type { CheckoutResponse } from '../../lib/types';
 
 export default function OrderConfirm() {
@@ -11,6 +12,7 @@ export default function OrderConfirm() {
   const order = stateData?.order;
   const total = stateData?.total;
   const orderNumber = order?.orderNumber ?? paramOrderNumber ?? '';
+  const { store, path } = useStore();
 
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -24,8 +26,9 @@ export default function OrderConfirm() {
   };
 
   const waMsg = encodeURIComponent(
-    `Halo, saya baru saja membuat pesanan dengan nomor *${orderNumber}*. Mohon konfirmasi & instruksi pembayarannya. Terima kasih!`,
+    `Halo ${store?.name ?? ''}, saya baru saja membuat pesanan dengan nomor *${orderNumber}*. Mohon konfirmasi & instruksi pembayarannya. Terima kasih!`,
   );
+  const waNumber = store?.whatsapp?.replace(/\D/g, '');
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
@@ -37,7 +40,7 @@ export default function OrderConfirm() {
           Pesanan Berhasil Dibuat!
         </h1>
         <p className="text-slate-500 mb-8">
-          Terima kasih sudah belanja di Sofia Shop. Admin akan menghubungi Anda untuk konfirmasi pembayaran.
+          Terima kasih sudah belanja di {store?.name ?? 'toko ini'}. Admin akan menghubungi Anda untuk konfirmasi pembayaran.
         </p>
 
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-6 text-left">
@@ -75,19 +78,30 @@ export default function OrderConfirm() {
               </div>
             </div>
           )}
+
+          {store?.bankInfo && (
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                Info Pembayaran
+              </div>
+              <div className="text-sm text-slate-700 whitespace-pre-line">{store.bankInfo}</div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2">
-          <a
-            href={`https://wa.me/6281234567890?text=${waMsg}`}
-            target="_blank"
-            rel="noreferrer"
-            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
-          >
-            <MessageCircle className="w-4 h-4" /> Konfirmasi via WhatsApp
-          </a>
+          {waNumber && (
+            <a
+              href={`https://wa.me/${waNumber}?text=${waMsg}`}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
+            >
+              <MessageCircle className="w-4 h-4" /> Konfirmasi via WhatsApp
+            </a>
+          )}
           <Link
-            to="/shop"
+            to={path('')}
             className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl flex items-center justify-center gap-2"
           >
             Belanja Lagi <ArrowRight className="w-4 h-4" />

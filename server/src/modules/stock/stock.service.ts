@@ -7,8 +7,9 @@ import type {
 } from './stock.schema.js';
 
 export const stockService = {
-  listMovements: async (q: ListStockMovementQuery) => {
+  listMovements: async (tenantId: string, q: ListStockMovementQuery) => {
     const where: Prisma.StockMovementWhereInput = {
+      tenantId,
       ...(q.productId ? { productId: q.productId } : {}),
       ...(q.type ? { type: q.type } : {}),
       ...(q.from || q.to
@@ -36,9 +37,9 @@ export const stockService = {
     return { items, total, page: q.page, pageSize: q.pageSize };
   },
 
-  adjust: async (input: StockAdjustmentInput, userId?: string) => {
-    const product = await prisma.product.findUnique({
-      where: { id: input.productId },
+  adjust: async (tenantId: string, input: StockAdjustmentInput, userId?: string) => {
+    const product = await prisma.product.findFirst({
+      where: { id: input.productId, tenantId },
     });
     if (!product) throw notFound('Product not found');
 
@@ -56,7 +57,6 @@ export const stockService = {
       stockAfter = stockBefore - input.quantity;
       movementQty = input.quantity;
     } else {
-      // ADJUSTMENT — absolute target stock
       if (input.quantity < 0) throw badRequest('ADJUSTMENT stock cannot be negative');
       stockAfter = input.quantity;
       movementQty = Math.abs(stockAfter - stockBefore);
@@ -69,6 +69,7 @@ export const stockService = {
       });
       return tx.stockMovement.create({
         data: {
+          tenantId,
           productId: product.id,
           type: input.type,
           quantity: movementQty,

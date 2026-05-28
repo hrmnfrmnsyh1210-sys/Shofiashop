@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Search, ShoppingBag, Package, Sparkles } from 'lucide-react';
 import { api } from '../../lib/api';
 import { rupiah } from '../../lib/format';
+import { useStore } from '../../lib/store';
 import type { CatalogCategory, CatalogProduct, PaginatedResponse } from '../../lib/types';
 
 type Sort = 'newest' | 'price-asc' | 'price-desc' | 'name';
@@ -15,6 +16,8 @@ const SORT_OPTIONS: { value: Sort; label: string }[] = [
 ];
 
 export default function ShopHome() {
+  const { slug, store, path } = useStore();
+
   const [search, setSearch] = useState('');
   const [categorySlug, setCategorySlug] = useState('');
   const [sort, setSort] = useState<Sort>('newest');
@@ -26,18 +29,20 @@ export default function ShopHome() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!slug) return;
     api
-      .get<CatalogCategory[]>('/catalog/categories', { skipAuth: true })
+      .get<CatalogCategory[]>(`/stores/${slug}/categories`, { skipAuth: true })
       .then(setCategories)
       .catch(() => setCategories([]));
-  }, []);
+  }, [slug]);
 
   useEffect(() => {
+    if (!slug) return;
     let cancelled = false;
     setLoading(true);
     const t = setTimeout(() => {
       api
-        .get<PaginatedResponse<CatalogProduct>>('/catalog/products', {
+        .get<PaginatedResponse<CatalogProduct>>(`/stores/${slug}/products`, {
           skipAuth: true,
           query: {
             search: search || undefined,
@@ -59,24 +64,23 @@ export default function ShopHome() {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [search, categorySlug, sort, page]);
+  }, [slug, search, categorySlug, sort, page]);
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   return (
     <div>
-      {/* Hero */}
       <section className="bg-gradient-to-br from-rose-50 via-white to-slate-50 border-b border-slate-200">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-rose-100 rounded-full text-xs font-semibold text-rose-600 tracking-wider uppercase mb-4">
             <Sparkles className="w-3.5 h-3.5" /> Belanja Online
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-900 max-w-2xl">
-            Belanja Praktis di Sofia Shop.
+            Belanja Praktis di {store?.name ?? 'Toko'}.
           </h1>
-          <p className="mt-3 text-slate-600 max-w-xl">
-            Pesan dari katalog, bayar via transfer, kami antar ke alamat Anda. Atau ambil langsung di toko.
-          </p>
+          {store?.description && (
+            <p className="mt-3 text-slate-600 max-w-xl">{store.description}</p>
+          )}
 
           <div className="mt-6 max-w-xl bg-white border border-slate-200 rounded-2xl flex items-center px-3 py-2 shadow-sm">
             <Search className="w-4 h-4 text-slate-400 mx-2" />
@@ -95,7 +99,6 @@ export default function ShopHome() {
       </section>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        {/* Filters */}
         <div className="flex flex-wrap items-center gap-2 mb-6">
           <button
             onClick={() => {
@@ -172,7 +175,7 @@ export default function ShopHome() {
               {data.items.map((p) => (
                 <Link
                   key={p.id}
-                  to={`/shop/product/${p.id}`}
+                  to={path(`product/${p.id}`)}
                   className="group bg-white border border-slate-200 hover:border-rose-300 hover:shadow-md rounded-xl p-3 transition-all"
                 >
                   <div className="aspect-square bg-slate-100 rounded-lg overflow-hidden mb-3 flex items-center justify-center">

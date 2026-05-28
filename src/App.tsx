@@ -12,6 +12,9 @@ import Members from './pages/admin/Members';
 import Transactions from './pages/admin/Transactions';
 import Stock from './pages/admin/Stock';
 import Reports from './pages/admin/Reports';
+import Settings from './pages/admin/Settings';
+import SuperLayout from './pages/super/SuperLayout';
+import Tenants from './pages/super/Tenants';
 import ShopLayout from './pages/shop/ShopLayout';
 import ShopHome from './pages/shop/ShopHome';
 import ProductDetail from './pages/shop/ProductDetail';
@@ -27,7 +30,8 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
 
-          <Route path="/shop" element={<ShopLayout />}>
+          {/* Per-tenant storefront */}
+          <Route path="/s/:slug" element={<ShopLayout />}>
             <Route index element={<ShopHome />} />
             <Route path="product/:id" element={<ProductDetail />} />
             <Route path="cart" element={<Cart />} />
@@ -35,10 +39,26 @@ export default function App() {
             <Route path="order/:orderNumber" element={<OrderConfirm />} />
           </Route>
 
+          {/* Legacy /shop redirects to default tenant — keep for now */}
+          <Route path="/shop/*" element={<Navigate to="/s/sofiashop" replace />} />
+
+          {/* Super admin */}
+          <Route
+            path="/super"
+            element={
+              <ProtectedRoute roles={['SUPER_ADMIN']}>
+                <SuperLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Tenants />} />
+          </Route>
+
+          {/* Store admin */}
           <Route
             path="/admin"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute roles={['ADMIN', 'MANAGER', 'CASHIER']}>
                 <AdminLayout />
               </ProtectedRoute>
             }
@@ -69,6 +89,14 @@ export default function App() {
               element={
                 <ProtectedRoute roles={['ADMIN', 'MANAGER']}>
                   <Reports />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="settings"
+              element={
+                <ProtectedRoute roles={['ADMIN']}>
+                  <Settings />
                 </ProtectedRoute>
               }
             />

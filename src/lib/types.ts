@@ -1,4 +1,45 @@
-export type UserRole = 'ADMIN' | 'MANAGER' | 'CASHIER';
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN' | 'MANAGER' | 'CASHIER';
+
+export interface Tenant {
+  id: string;
+  name: string;
+  slug: string;
+  customDomain: string | null;
+  description: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  address: string | null;
+  logoUrl: string | null;
+  bankInfo: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  _count?: { users: number; products: number };
+}
+
+export interface PublicStore {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  address: string | null;
+  logoUrl: string | null;
+  bankInfo: string | null;
+  customDomain: string | null;
+}
+
+export interface AuthSession {
+  user: AuthUser;
+  tenant: { id: string; name: string; slug: string } | null;
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface AuthUser extends Omit<User, 'tenantId'> {
+  tenantId: string | null;
+}
 
 export type TransactionStatus = 'PENDING' | 'PAID' | 'VOIDED' | 'REFUNDED';
 export type TransactionChannel = 'POS' | 'ONLINE';
@@ -17,6 +58,7 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
+  tenantId: string | null;
   isActive: boolean;
   createdAt: string;
 }
@@ -154,6 +196,7 @@ export interface CheckoutResponse {
 
 export interface AuthResponse {
   user: User;
+  tenant?: { id: string; name: string; slug: string } | null;
   accessToken: string;
   refreshToken: string;
 }
