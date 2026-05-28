@@ -127,6 +127,31 @@ export interface PaginatedResponse<T> {
   pageSize: number;
 }
 
+export interface CatalogProduct {
+  id: string;
+  name: string;
+  sku: string;
+  description: string | null;
+  imageUrl: string | null;
+  price: string;
+  unit: string;
+  stock: number;
+  category: { id: string; name: string; slug: string } | null;
+}
+
+export interface CatalogCategory {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface CheckoutResponse {
+  orderNumber: string;
+  total: string;
+  status: TransactionStatus;
+  onlineStatus: OnlineOrderStatus | null;
+}
+
 export interface AuthResponse {
   user: User;
   accessToken: string;

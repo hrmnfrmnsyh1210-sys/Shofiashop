@@ -151,9 +151,9 @@ export default function Landing() {
             <Link to="/login" className="flex items-center justify-center gap-2 px-8 py-4 bg-rose-500 text-white font-bold rounded-xl shadow-lg shadow-rose-200 hover:bg-rose-600 transition-all">
               Mulai Gratis 14 Hari <ArrowRight className="w-5 h-5" />
             </Link>
-            <a href="#fitur" className="flex items-center justify-center gap-2 px-8 py-4 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all shadow-sm">
+            <Link to="/shop" className="flex items-center justify-center gap-2 px-8 py-4 bg-white border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 transition-all shadow-sm">
               Lihat Toko Demo
-            </a>
+            </Link>
           </motion.div>
 
           <motion.p
@@ -568,7 +568,7 @@ export default function Landing() {
               <ul className="space-y-2 text-sm text-slate-600">
                 <li><a href="#fitur" className="hover:text-rose-500">Fitur</a></li>
                 <li><a href="#harga" className="hover:text-rose-500">Harga</a></li>
-                <li><a href="#" className="hover:text-rose-500">Demo Toko</a></li>
+                <li><Link to="/shop" className="hover:text-rose-500">Demo Toko</Link></li>
                 <li><a href="#" className="hover:text-rose-500">Roadmap</a></li>
               </ul>
             </div>
