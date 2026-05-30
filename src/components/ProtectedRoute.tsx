@@ -2,6 +2,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from '../lib/auth';
 import type { UserRole } from '../lib/types';
+import { Loading } from './Spinner';
 
 interface Props {
   children: ReactNode;
@@ -15,7 +16,7 @@ export function ProtectedRoute({ children, roles }: Props) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-slate-400 text-sm">Memuat sesi...</div>
+        <Loading label="Memuat sesi..." />
       </div>
     );
   }
