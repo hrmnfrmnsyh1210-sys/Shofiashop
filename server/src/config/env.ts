@@ -15,16 +15,21 @@ const EnvSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(10),
 
-  // ---- Komerce Collaborator platform (RajaOngkir x Komship) ----
-  // Single host for all shipping services; switch sandbox <-> production here.
-  //   sandbox:    https://api-sandbox.collaborator.komerce.id
-  //   production: https://api.collaborator.komerce.id
-  KOMERCE_BASE_URL: z.string().default('https://api-sandbox.collaborator.komerce.id'),
-  // "Shipping Cost" key — powers ongkir calculation + destination search
-  // (tariff API). Leave empty to disable the ongkir feature.
-  KOMERCE_COST_API_KEY: z.string().default(''),
-  // "Shipping Delivery" key (Komship) — powers auto-resi (order/pickup) and AWB
-  // tracking. Separate key from the cost key. Leave empty to keep manual resi.
+  // ---- RajaOngkir V2 (Komerce) — ongkir + waybill tracking ----
+  // Host rajaongkir.komerce.id, auth header `key`. Powers cost calculation,
+  // destination search, and AWB tracking. Empty key = ongkir disabled.
+  RAJAONGKIR_API_KEY: z.string().default(''),
+  RAJAONGKIR_BASE_URL: z.string().default('https://rajaongkir.komerce.id/api/v1'),
+  // Couriers to quote, colon-separated (Komerce returns all in one call).
+  RAJAONGKIR_COURIERS: z.string().default('jne:jnt:sicepat:anteraja:pos:tiki:ninja'),
+
+  // ---- Komship Delivery Order API (collaborator) — auto-generate resi ----
+  // Separate platform & key (header `x-api-key`). Sandbox by default; switch to
+  // https://api.collaborator.komerce.id/order/api/v1 for production. Requires
+  // the "Shipping Delivery" key; empty = manual resi entry only.
+  KOMSHIP_BASE_URL: z
+    .string()
+    .default('https://api-sandbox.collaborator.komerce.id/order/api/v1'),
   KOMSHIP_API_KEY: z.string().default(''),
   // Default pickup vehicle (Motor | Mobil | Truk) and pickup time (HH:MM).
   KOMSHIP_PICKUP_VEHICLE: z.string().default('Motor'),

@@ -151,8 +151,7 @@ export default function Checkout() {
           shippingAddress: shippingAddress.trim(),
           paymentMethod,
           shippingFee: shippingFeeN,
-          // store the courier name as Komerce knows it (e.g. "JNE") — used for
-          // tracking (history-airway-bill) and Komship auto-resi
+          // store the raw courier code (e.g. "jne") — used by track/waybill
           shippingCourier: selectedOption?.courier ?? null,
           shippingService: selectedOption?.service ?? null,
           shippingEtd: selectedOption?.etd || null,

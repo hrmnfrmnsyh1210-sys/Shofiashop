@@ -3,7 +3,6 @@ import { prisma } from '../../lib/prisma.js';
 import { badRequest, notFound } from '../../lib/httpError.js';
 import { transactionService } from '../transactions/transaction.service.js';
 import { shippingService } from '../shipping/shipping.service.js';
-import { komshipService } from '../shipping/komship.service.js';
 import type { ShippingCostInput } from '../shipping/shipping.schema.js';
 import type { CheckoutInput, ListCatalogQuery } from './catalog.schema.js';
 
@@ -145,27 +144,22 @@ export const catalogService = {
     const productIds = input.items.map((i) => i.productId);
     const products = await prisma.product.findMany({
       where: { id: { in: productIds }, tenantId },
-      select: { id: true, weight: true, price: true },
+      select: { id: true, weight: true },
     });
-    const productMap = new Map(products.map((p) => [p.id, p]));
-    if (productMap.size !== productIds.length) {
+    const weightMap = new Map(products.map((p) => [p.id, p.weight]));
+    if (weightMap.size !== productIds.length) {
       throw badRequest('Satu atau lebih produk tidak ditemukan.');
     }
 
-    let totalWeight = 0;
-    let itemValue = 0;
-    for (const i of input.items) {
-      const p = productMap.get(i.productId);
-      if (!p) continue;
-      totalWeight += p.weight * i.quantity;
-      itemValue += Number(p.price) * i.quantity;
-    }
+    const totalWeight = input.items.reduce(
+      (sum, i) => sum + (weightMap.get(i.productId) ?? 0) * i.quantity,
+      0,
+    );
 
     return shippingService.calculateCost({
       originId: tenant.originCityId,
       destinationId: input.destinationId,
       weight: totalWeight,
-      itemValue,
     });
   },
 
@@ -225,7 +219,7 @@ export const catalogService = {
     if (!trx.shippingCourier) {
       throw badRequest('Data kurir pesanan ini belum lengkap, hubungi toko.');
     }
-    return komshipService.trackWaybill({
+    return shippingService.trackWaybill({
       waybill: trx.trackingNumber,
       courier: trx.shippingCourier,
     });

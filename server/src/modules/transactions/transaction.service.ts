@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { badRequest, conflict, notFound } from '../../lib/httpError.js';
 import { generateTransactionNumber } from '../../lib/transactionNumber.js';
+import { shippingService } from '../shipping/shipping.service.js';
 import { komshipService } from '../shipping/komship.service.js';
 import type {
   CreateShipmentInput,
@@ -323,7 +324,7 @@ export const transactionService = {
     if (!trx.shippingCourier) {
       throw badRequest('Kurir pengiriman belum diatur untuk pesanan ini.');
     }
-    return komshipService.trackWaybill({
+    return shippingService.trackWaybill({
       waybill: trx.trackingNumber,
       courier: trx.shippingCourier,
     });

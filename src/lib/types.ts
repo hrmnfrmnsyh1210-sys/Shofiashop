@@ -226,17 +226,26 @@ export interface ShippingOption {
 }
 
 export interface TrackingStep {
-  date: string; // "YYYY-MM-DD HH:MM:SS"
-  status: string;
+  date: string;
+  time: string;
   description: string;
+  location: string;
 }
 
 export interface TrackingInfo {
   waybill: string;
   courier: string;
-  status: string; // last status text
+  courierName: string;
+  service: string;
+  shipper: string;
+  receiver: string;
+  origin: string;
+  destination: string;
+  status: string;
   delivered: boolean;
-  history: TrackingStep[]; // newest first
+  podReceiver: string | null;
+  podDate: string | null;
+  history: TrackingStep[];
 }
 
 export interface CustomerOrderItem {

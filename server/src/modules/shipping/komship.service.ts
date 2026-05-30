@@ -70,31 +70,6 @@ interface KomshipDetailResult {
   order_no: string;
 }
 
-interface KomshipHistoryResult {
-  airway_bill: string;
-  last_status: string;
-  history: { desc: string; date: string; code: string; status: string }[];
-}
-
-// --- Normalized tracking shapes (shared with the frontend) ---
-export interface TrackingStep {
-  date: string; // "YYYY-MM-DD HH:MM:SS"
-  status: string;
-  description: string;
-}
-
-export interface TrackingInfo {
-  waybill: string;
-  courier: string;
-  status: string; // last status text
-  delivered: boolean;
-  history: TrackingStep[]; // newest first
-}
-
-const DELIVERED_RE = /deliver|terkirim|diterima/i;
-
-const KOMSHIP_BASE = () => `${env.KOMERCE_BASE_URL}/order/api/v1`;
-
 const isEnabled = () => env.KOMSHIP_API_KEY.length > 0;
 
 const ensureEnabled = () => {
@@ -109,7 +84,7 @@ async function call<T>(
   path: string,
   init: RequestInit & { query?: Record<string, string> } = {},
 ): Promise<T> {
-  const url = new URL(`${KOMSHIP_BASE()}${path}`);
+  const url = new URL(`${env.KOMSHIP_BASE_URL}${path}`);
   if (init.query) {
     for (const [k, v] of Object.entries(init.query)) url.searchParams.set(k, v);
   }
@@ -185,40 +160,5 @@ export const komshipService = {
       method: 'GET',
       query: { order_no: orderNo },
     });
-  },
-
-  // Track a shipment by its AWB/resi and courier name.
-  // Collaborator: GET /order/api/v1/orders/history-airway-bill
-  trackWaybill: async (params: {
-    waybill: string;
-    courier: string;
-  }): Promise<TrackingInfo> => {
-    ensureEnabled();
-    const awb = params.waybill.trim();
-    const courier = params.courier.trim();
-    if (!awb) throw badRequest('Nomor resi tidak boleh kosong.');
-    if (!courier) throw badRequest('Kurir pengiriman belum diketahui untuk pesanan ini.');
-
-    const data = await call<KomshipHistoryResult>('/orders/history-airway-bill', {
-      method: 'GET',
-      query: { shipping: courier, airway_bill: awb },
-    });
-
-    const history: TrackingStep[] = (data?.history ?? []).map((h) => ({
-      date: h.date,
-      status: h.status,
-      description: h.desc,
-    }));
-    // Show newest first.
-    history.reverse();
-
-    const status = data?.last_status ?? '';
-    return {
-      waybill: data?.airway_bill || awb,
-      courier,
-      status,
-      delivered: DELIVERED_RE.test(status),
-      history,
-    };
   },
 };
