@@ -155,8 +155,8 @@ export const catalogService = {
     );
 
     return shippingService.calculateCost({
-      originCityId: tenant.originCityId,
-      destinationCityId: input.destinationCityId,
+      originId: tenant.originCityId,
+      destinationId: input.destinationId,
       weight: totalWeight,
     });
   },

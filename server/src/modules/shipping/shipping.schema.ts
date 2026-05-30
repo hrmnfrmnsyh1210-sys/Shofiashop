@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
-export const ListCitiesQuerySchema = z.object({
-  provinceId: z.string().optional(),
+export const SearchDestinationQuerySchema = z.object({
+  search: z.string().min(2).max(120),
 });
 
 export const ShippingCostItemSchema = z.object({
@@ -10,9 +10,9 @@ export const ShippingCostItemSchema = z.object({
 });
 
 export const ShippingCostSchema = z.object({
-  destinationCityId: z.string().min(1),
+  destinationId: z.string().min(1),
   items: z.array(ShippingCostItemSchema).min(1),
 });
 
-export type ListCitiesQuery = z.infer<typeof ListCitiesQuerySchema>;
+export type SearchDestinationQuery = z.infer<typeof SearchDestinationQuerySchema>;
 export type ShippingCostInput = z.infer<typeof ShippingCostSchema>;

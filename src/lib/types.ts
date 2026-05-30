@@ -194,17 +194,14 @@ export interface CatalogCategory {
   slug: string;
 }
 
-export interface ShippingProvince {
+export interface ShippingDestination {
   id: string;
-  name: string;
-}
-
-export interface ShippingCity {
-  id: string;
-  provinceId: string;
+  label: string;
   province: string;
-  name: string;
-  postalCode: string;
+  city: string;
+  district: string;
+  subdistrict: string;
+  zipCode: string;
 }
 
 export interface ShippingOption {

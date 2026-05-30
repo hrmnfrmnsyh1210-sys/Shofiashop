@@ -4,7 +4,8 @@ import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { PageHeader } from '../../components/PageHeader';
 import { fileToDataUrl, MAX_IMAGE_BYTES } from '../../lib/imageUpload';
-import type { ShippingCity, ShippingProvince, Tenant } from '../../lib/types';
+import { DestinationSearch } from '../../components/DestinationSearch';
+import type { Tenant } from '../../lib/types';
 
 type Form = {
   name: string;
@@ -44,10 +45,6 @@ export default function Settings() {
 
   // shipping origin picker
   const [shippingEnabled, setShippingEnabled] = useState(false);
-  const [provinces, setProvinces] = useState<ShippingProvince[]>([]);
-  const [provinceId, setProvinceId] = useState('');
-  const [cities, setCities] = useState<ShippingCity[]>([]);
-  const [loadingCities, setLoadingCities] = useState(false);
 
   const shopUrl =
     typeof window !== 'undefined' && tenant
@@ -83,42 +80,17 @@ export default function Settings() {
     };
   }, []);
 
-  // Load shipping availability + provinces for the origin picker.
+  // Detect whether the ongkir API is configured (controls the origin picker).
   useEffect(() => {
     let cancelled = false;
     api
       .get<{ enabled: boolean }>('/shipping/enabled')
-      .then((r) => {
-        if (cancelled || !r.enabled) return;
-        setShippingEnabled(true);
-        api
-          .get<ShippingProvince[]>('/shipping/provinces')
-          .then((p) => !cancelled && setProvinces(p))
-          .catch(() => !cancelled && setProvinces([]));
-      })
+      .then((r) => !cancelled && setShippingEnabled(r.enabled))
       .catch(() => !cancelled && setShippingEnabled(false));
     return () => {
       cancelled = true;
     };
   }, []);
-
-  // Load cities when a province is chosen in the origin picker.
-  useEffect(() => {
-    if (!provinceId) {
-      setCities([]);
-      return;
-    }
-    let cancelled = false;
-    setLoadingCities(true);
-    api
-      .get<ShippingCity[]>('/shipping/cities', { query: { provinceId } })
-      .then((c) => !cancelled && setCities(c))
-      .catch(() => !cancelled && setCities([]))
-      .finally(() => !cancelled && setLoadingCities(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [provinceId]);
 
   const onPickLogo = async (file: File | null) => {
     if (!file) return;
@@ -322,50 +294,24 @@ export default function Settings() {
               </div>
             ) : (
               <>
-                <div className="mb-3 text-xs text-slate-500">
-                  Kota asal saat ini:{' '}
-                  <span className="font-semibold text-slate-800">
-                    {form.originCityName || 'Belum diatur'}
-                  </span>
-                </div>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  <Field label="Provinsi Asal">
-                    <select
-                      value={provinceId}
-                      onChange={(e) => setProvinceId(e.target.value)}
-                      className={inputCls}
-                    >
-                      <option value="">— Pilih provinsi —</option>
-                      {provinces.map((p) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="Kota / Kabupaten Asal">
-                    <select
-                      value={form.originCityId}
-                      onChange={(e) => {
-                        const city = cities.find((c) => c.id === e.target.value);
-                        setForm({
-                          ...form,
-                          originCityId: e.target.value,
-                          originCityName: city?.name ?? '',
-                        });
-                      }}
-                      disabled={!provinceId || loadingCities}
-                      className={`${inputCls} disabled:bg-slate-50 disabled:text-slate-400`}
-                    >
-                      <option value="">
-                        {loadingCities ? 'Memuat kota...' : '— Pilih kota —'}
-                      </option>
-                      {cities.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </Field>
-                </div>
+                <span className="block text-xs font-semibold text-slate-700 mb-1">
+                  Lokasi Asal Pengiriman
+                </span>
+                <DestinationSearch
+                  selectedLabel={form.originCityName || null}
+                  disabled={!canEdit}
+                  onSelect={(d) =>
+                    setForm({
+                      ...form,
+                      originCityId: d?.id ?? '',
+                      originCityName: d?.label ?? '',
+                    })
+                  }
+                  placeholder="Ketik kota/kecamatan asal, mis. Tanah Sareal Bogor"
+                />
                 <p className="mt-2 text-[11px] text-slate-400">
-                  Ongkir pesanan online dihitung dari kota asal ini ke kota tujuan pembeli.
+                  Ongkir pesanan online dihitung dari lokasi asal ini ke tujuan pembeli.
+                  Ketik minimal 3 huruf lalu pilih dari daftar.
                 </p>
               </>
             )}

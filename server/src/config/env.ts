@@ -15,12 +15,13 @@ const EnvSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(10),
 
-  // ---- RajaOngkir (online-order shipping cost) ----
+  // ---- RajaOngkir / Komerce (online-order shipping cost) ----
   // Leave RAJAONGKIR_API_KEY empty to disable the shipping API.
   RAJAONGKIR_API_KEY: z.string().default(''),
-  RAJAONGKIR_BASE_URL: z.string().default('https://api.rajaongkir.com/starter'),
-  // Colon-separated couriers to quote, e.g. "jne:pos:tiki" (Starter plan limit).
-  RAJAONGKIR_COURIERS: z.string().default('jne:pos:tiki'),
+  // Komerce RajaOngkir API v1 base URL.
+  RAJAONGKIR_BASE_URL: z.string().default('https://rajaongkir.komerce.id/api/v1'),
+  // Colon-separated couriers to quote (Komerce supports many in one call).
+  RAJAONGKIR_COURIERS: z.string().default('jne:jnt:sicepat:anteraja:pos:tiki:ninja'),
 });
 
 const parsed = EnvSchema.safeParse(process.env);

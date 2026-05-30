@@ -5,11 +5,11 @@ import { api, ApiError } from '../../lib/api';
 import { useCart } from '../../lib/cart';
 import { rupiah } from '../../lib/format';
 import { useStore } from '../../lib/store';
+import { DestinationSearch } from '../../components/DestinationSearch';
 import type {
   CheckoutResponse,
-  ShippingCity,
+  ShippingDestination,
   ShippingOption,
-  ShippingProvince,
 } from '../../lib/types';
 
 type PayMethod = 'TRANSFER' | 'EWALLET' | 'QRIS' | 'CASH' | 'OTHER';
@@ -36,11 +36,7 @@ export default function Checkout() {
 
   // --- Shipping / ekspedisi ---
   const [shippingEnabled, setShippingEnabled] = useState<boolean | null>(null);
-  const [provinces, setProvinces] = useState<ShippingProvince[]>([]);
-  const [provinceId, setProvinceId] = useState('');
-  const [cities, setCities] = useState<ShippingCity[]>([]);
-  const [cityId, setCityId] = useState('');
-  const [loadingCities, setLoadingCities] = useState(false);
+  const [destination, setDestination] = useState<ShippingDestination | null>(null);
   const [options, setOptions] = useState<ShippingOption[]>([]);
   const [selectedKey, setSelectedKey] = useState('');
   const [loadingCost, setLoadingCost] = useState(false);
@@ -60,7 +56,7 @@ export default function Checkout() {
         setCustomerName(v.customerName ?? '');
         setCustomerPhone(v.customerPhone ?? '');
         setShippingAddress(v.shippingAddress ?? '');
-        if (v.provinceId) setProvinceId(v.provinceId);
+        if (v.destination) setDestination(v.destination);
       } catch {
         // ignore
       }
@@ -69,58 +65,26 @@ export default function Checkout() {
   useEffect(() => {
     localStorage.setItem(
       'compos.shopCheckout',
-      JSON.stringify({ customerName, customerPhone, shippingAddress, provinceId }),
+      JSON.stringify({ customerName, customerPhone, shippingAddress, destination }),
     );
-  }, [customerName, customerPhone, shippingAddress, provinceId]);
+  }, [customerName, customerPhone, shippingAddress, destination]);
 
-  // Detect whether the store has the ongkir API configured, then load provinces.
+  // Detect whether the store has the ongkir API configured.
   useEffect(() => {
     let cancelled = false;
     api
       .get<{ enabled: boolean }>('/shipping/enabled', { skipAuth: true })
-      .then((r) => {
-        if (cancelled) return;
-        setShippingEnabled(r.enabled);
-        if (r.enabled) {
-          api
-            .get<ShippingProvince[]>('/shipping/provinces', { skipAuth: true })
-            .then((p) => !cancelled && setProvinces(p))
-            .catch(() => !cancelled && setProvinces([]));
-        }
-      })
+      .then((r) => !cancelled && setShippingEnabled(r.enabled))
       .catch(() => !cancelled && setShippingEnabled(false));
     return () => {
       cancelled = true;
     };
   }, []);
 
-  // Load cities when a province is selected.
+  // Fetch ongkir options when a destination is selected.
+  const destinationId = destination?.id ?? '';
   useEffect(() => {
-    if (!provinceId) {
-      setCities([]);
-      return;
-    }
-    let cancelled = false;
-    setLoadingCities(true);
-    setCityId('');
-    setOptions([]);
-    setSelectedKey('');
-    api
-      .get<ShippingCity[]>('/shipping/cities', {
-        query: { provinceId },
-        skipAuth: true,
-      })
-      .then((c) => !cancelled && setCities(c))
-      .catch(() => !cancelled && setCities([]))
-      .finally(() => !cancelled && setLoadingCities(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [provinceId]);
-
-  // Fetch ongkir options when a destination city is selected.
-  useEffect(() => {
-    if (!cityId || lines.length === 0) {
+    if (!destinationId || lines.length === 0) {
       setOptions([]);
       setSelectedKey('');
       return;
@@ -134,7 +98,7 @@ export default function Checkout() {
       .post<ShippingOption[]>(
         `/stores/${slug}/shipping/cost`,
         {
-          destinationCityId: cityId,
+          destinationId,
           items: lines.map((l) => ({ productId: l.productId, quantity: l.quantity })),
         },
         { skipAuth: true },
@@ -153,14 +117,13 @@ export default function Checkout() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cityId, slug]);
+  }, [destinationId, slug]);
 
   if (lines.length === 0) {
     return <Navigate to={path('cart')} replace />;
   }
 
   const selectedOption = options.find((o) => optionKey(o) === selectedKey) ?? null;
-  const selectedCity = cities.find((c) => c.id === cityId) ?? null;
   const apiMode = shippingEnabled === true;
 
   const shippingFeeN = apiMode
@@ -174,7 +137,7 @@ export default function Checkout() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (apiMode && !selectedOption) {
-      setError('Silakan pilih kota tujuan dan layanan pengiriman terlebih dahulu.');
+      setError('Silakan pilih tujuan dan layanan pengiriman terlebih dahulu.');
       return;
     }
     setError(null);
@@ -193,7 +156,7 @@ export default function Checkout() {
             : null,
           shippingService: selectedOption?.service ?? null,
           shippingEtd: selectedOption?.etd || null,
-          destinationCity: selectedCity?.name ?? null,
+          destinationCity: destination?.label ?? null,
           notes: notes.trim() || null,
           items: lines.map((l) => ({ productId: l.productId, quantity: l.quantity })),
         },
@@ -209,7 +172,7 @@ export default function Checkout() {
                 label: `${selectedOption.courier.toUpperCase()} ${selectedOption.service}`,
                 etd: selectedOption.etd,
                 cost: shippingFeeN,
-                city: selectedCity?.name ?? null,
+                city: destination?.label ?? null,
               }
             : null,
         },
@@ -242,37 +205,16 @@ export default function Checkout() {
               </Field>
 
               {apiMode && (
-                <>
-                  <Field label="Provinsi Tujuan *">
-                    <select
-                      required
-                      value={provinceId}
-                      onChange={(e) => setProvinceId(e.target.value)}
-                      className={inputCls}
-                    >
-                      <option value="">— Pilih provinsi —</option>
-                      {provinces.map((p) => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="Kota / Kabupaten Tujuan *">
-                    <select
-                      required
-                      value={cityId}
-                      onChange={(e) => setCityId(e.target.value)}
-                      disabled={!provinceId || loadingCities}
-                      className={`${inputCls} disabled:bg-slate-50 disabled:text-slate-400`}
-                    >
-                      <option value="">
-                        {loadingCities ? 'Memuat kota...' : '— Pilih kota —'}
-                      </option>
-                      {cities.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </Field>
-                </>
+                <Field label="Tujuan Pengiriman (kota/kecamatan) *" className="sm:col-span-2">
+                  <DestinationSearch
+                    selectedLabel={destination?.label ?? null}
+                    onSelect={setDestination}
+                    placeholder="Ketik kota/kecamatan tujuan, mis. Tanah Sareal Bogor"
+                  />
+                  <span className="mt-1 block text-[11px] text-slate-400">
+                    Ketik minimal 3 huruf, lalu pilih dari daftar untuk menghitung ongkir.
+                  </span>
+                </Field>
               )}
 
               <Field label="Alamat Lengkap *" className="sm:col-span-2">
@@ -298,9 +240,9 @@ export default function Checkout() {
                 <Truck className="w-4 h-4 text-rose-500" /> Pilih Ekspedisi
               </h2>
 
-              {!cityId ? (
+              {!destination ? (
                 <p className="text-sm text-slate-400">
-                  Pilih provinsi & kota tujuan dulu untuk melihat pilihan kurir dan ongkir.
+                  Pilih tujuan pengiriman dulu untuk melihat pilihan kurir dan ongkir.
                 </p>
               ) : loadingCost ? (
                 <div className="flex items-center gap-2 text-sm text-slate-500 py-4">
@@ -464,7 +406,7 @@ export default function Checkout() {
             </button>
             {apiMode && !shippingReady && (
               <p className="text-[11px] text-amber-600 text-center">
-                Pilih kota tujuan & ekspedisi untuk melanjutkan.
+                Pilih tujuan & ekspedisi untuk melanjutkan.
               </p>
             )}
             <p className="text-[10px] text-slate-400 text-center">

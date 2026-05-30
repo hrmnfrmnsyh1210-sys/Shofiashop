@@ -1,59 +1,49 @@
 import { env } from '../../config/env.js';
 import { badRequest, serviceUnavailable } from '../../lib/httpError.js';
 
-// --- RajaOngkir (Starter) response shapes (only the bits we use) ---
-interface RajaOngkirEnvelope<T> {
-  rajaongkir: {
-    status: { code: number; description: string };
-    results: T;
-  };
+// --- Komerce RajaOngkir API (v1) response shapes (only the bits we use) ---
+interface KomerceEnvelope<T> {
+  meta: { message: string; code: number; status: string };
+  data: T;
 }
 
-interface RoProvince {
-  province_id: string;
-  province: string;
-}
-
-interface RoCity {
-  city_id: string;
-  province_id: string;
-  province: string;
-  type: string;
+interface KoDestination {
+  id: number;
+  label: string;
+  province_name: string;
   city_name: string;
-  postal_code: string;
+  district_name: string;
+  subdistrict_name: string;
+  zip_code: string;
 }
 
-interface RoCostResult {
-  code: string;
-  name: string;
-  costs: {
-    service: string;
-    description: string;
-    cost: { value: number; etd: string; note: string }[];
-  }[];
+interface KoCost {
+  name: string; // courier name, e.g. "JNE"
+  code: string; // courier code, e.g. "jne"
+  service: string; // e.g. "REG"
+  description: string;
+  cost: number; // IDR
+  etd: string; // e.g. "2 day"
 }
 
 // --- Our normalized public shapes ---
-export interface Province {
+export interface Destination {
   id: string;
-  name: string;
-}
-
-export interface City {
-  id: string;
-  provinceId: string;
+  label: string;
   province: string;
-  name: string;
-  postalCode: string;
+  city: string;
+  district: string;
+  subdistrict: string;
+  zipCode: string;
 }
 
 export interface ShippingOption {
   courier: string; // e.g. "jne"
-  courierName: string; // e.g. "Jalur Nugraha Ekakurir (JNE)"
+  courierName: string; // e.g. "JNE"
   service: string; // e.g. "REG"
-  description: string; // e.g. "Layanan Reguler"
+  description: string;
   cost: number; // IDR
-  etd: string; // e.g. "2-3" (days), may be empty
+  etd: string; // e.g. "2-3" (cleaned), may be empty
 }
 
 const isEnabled = () => env.RAJAONGKIR_API_KEY.length > 0;
@@ -86,90 +76,77 @@ async function call<T>(
   }
 
   const text = await res.text();
-  let body: RajaOngkirEnvelope<T> | undefined;
+  let body: KomerceEnvelope<T> | undefined;
   try {
-    body = text ? (JSON.parse(text) as RajaOngkirEnvelope<T>) : undefined;
+    body = text ? (JSON.parse(text) as KomerceEnvelope<T>) : undefined;
   } catch {
     body = undefined;
   }
 
-  const status = body?.rajaongkir?.status;
-  if (!res.ok || !status || status.code !== 200) {
-    const msg = status?.description ?? `Layanan ongkir error (${res.status})`;
-    // 4xx from RajaOngkir is usually a bad request (invalid city/courier).
+  const meta = body?.meta;
+  if (!res.ok || !meta || meta.code !== 200) {
+    const msg = meta?.message ?? `Layanan ongkir error (${res.status})`;
     throw badRequest(`Ongkir: ${msg}`);
   }
-  return body!.rajaongkir.results;
+  return body!.data;
 }
+
+const cleanEtd = (etd: string) =>
+  (etd ?? '').replace(/\s*(hari|days?)\s*/gi, '').trim();
 
 export const shippingService = {
   isEnabled,
 
-  getProvinces: async (): Promise<Province[]> => {
+  // Search domestic destinations (down to sub-district level) by free text.
+  searchDestinations: async (search: string): Promise<Destination[]> => {
     ensureEnabled();
-    const results = await call<RoProvince[]>('/province');
-    return results.map((p) => ({ id: p.province_id, name: p.province }));
-  },
-
-  getCities: async (provinceId?: string): Promise<City[]> => {
-    ensureEnabled();
-    const results = await call<RoCity[]>('/city', {
-      query: provinceId ? { province: provinceId } : {},
+    const data = await call<KoDestination[]>('/destination/domestic-destination', {
+      query: { search, limit: '30', offset: '0' },
     });
-    return results.map((c) => ({
-      id: c.city_id,
-      provinceId: c.province_id,
-      province: c.province,
-      name: `${c.type} ${c.city_name}`.trim(),
-      postalCode: c.postal_code,
+    return (data ?? []).map((d) => ({
+      id: String(d.id),
+      label: d.label,
+      province: d.province_name,
+      city: d.city_name,
+      district: d.district_name,
+      subdistrict: d.subdistrict_name,
+      zipCode: d.zip_code,
     }));
   },
 
-  // RajaOngkir Starter only quotes one courier per request, so we fan out.
+  // Calculate shipping cost between two destination ids for a given weight.
+  // Komerce returns all requested couriers in a single call.
   calculateCost: async (params: {
-    originCityId: string;
-    destinationCityId: string;
+    originId: string;
+    destinationId: string;
     weight: number;
   }): Promise<ShippingOption[]> => {
     ensureEnabled();
     const weight = Math.max(1, Math.round(params.weight));
-    const couriers = env.RAJAONGKIR_COURIERS.split(':')
+    const courier = env.RAJAONGKIR_COURIERS.split(':')
       .map((c) => c.trim().toLowerCase())
-      .filter(Boolean);
+      .filter(Boolean)
+      .join(':');
 
-    const perCourier = await Promise.allSettled(
-      couriers.map((courier) =>
-        call<RoCostResult[]>('/cost', {
-          method: 'POST',
-          headers: { 'content-type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({
-            origin: params.originCityId,
-            destination: params.destinationCityId,
-            weight: String(weight),
-            courier,
-          }).toString(),
-        }),
-      ),
-    );
+    const data = await call<KoCost[]>('/calculate/domestic-cost', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        origin: params.originId,
+        destination: params.destinationId,
+        weight: String(weight),
+        courier,
+      }).toString(),
+    });
 
-    const options: ShippingOption[] = [];
-    for (const settled of perCourier) {
-      if (settled.status !== 'fulfilled') continue;
-      for (const result of settled.value) {
-        for (const svc of result.costs) {
-          const cost = svc.cost[0];
-          if (!cost) continue;
-          options.push({
-            courier: result.code,
-            courierName: result.name,
-            service: svc.service,
-            description: svc.description,
-            cost: cost.value,
-            etd: (cost.etd ?? '').replace(/\s*hari\s*/i, '').trim(),
-          });
-        }
-      }
-    }
+    const options: ShippingOption[] = (data ?? []).map((c) => ({
+      courier: c.code,
+      courierName: c.name,
+      service: c.service,
+      description: c.description,
+      cost: c.cost,
+      etd: cleanEtd(c.etd),
+    }));
 
     if (options.length === 0) {
       throw badRequest(
