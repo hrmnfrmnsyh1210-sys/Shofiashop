@@ -6,6 +6,8 @@ import { shippingService } from '../shipping/shipping.service.js';
 import type { ShippingCostInput } from '../shipping/shipping.schema.js';
 import type { CheckoutInput, ListCatalogQuery } from './catalog.schema.js';
 
+const normalizePhone = (p: string) => p.replace(/\D/g, '');
+
 const orderByFor = (sort: ListCatalogQuery['sort']): Prisma.ProductOrderByWithRelationInput => {
   switch (sort) {
     case 'price-asc':
@@ -158,6 +160,68 @@ export const catalogService = {
       originId: tenant.originCityId,
       destinationId: input.destinationId,
       weight: totalWeight,
+    });
+  },
+
+  // Look up a buyer's own online order, verifying the phone number matches the
+  // one used at checkout. Throws 404 on mismatch so order numbers can't be
+  // enumerated to read other people's orders.
+  findCustomerOrder: async (tenantId: string, orderNumber: string, phone: string) => {
+    const trx = await prisma.transaction.findFirst({
+      where: {
+        tenantId,
+        transactionNumber: orderNumber.trim(),
+        channel: 'ONLINE',
+      },
+      include: {
+        items: {
+          select: { id: true, productName: true, quantity: true, unitPrice: true, subtotal: true },
+        },
+      },
+    });
+    const actual = normalizePhone(trx?.customerPhone ?? '');
+    if (!trx || !actual || actual !== normalizePhone(phone)) {
+      throw notFound('Pesanan tidak ditemukan. Periksa nomor pesanan dan no. HP Anda.');
+    }
+    return trx;
+  },
+
+  // Public-safe order status for the buyer (no internal/financial cost data).
+  getOrderStatus: async (tenantId: string, orderNumber: string, phone: string) => {
+    const trx = await catalogService.findCustomerOrder(tenantId, orderNumber, phone);
+    return {
+      orderNumber: trx.transactionNumber,
+      status: trx.status,
+      onlineStatus: trx.onlineStatus,
+      createdAt: trx.createdAt,
+      shippedAt: trx.shippedAt,
+      customerName: trx.customerName,
+      shippingAddress: trx.shippingAddress,
+      subtotal: trx.subtotal,
+      shippingFee: trx.shippingFee,
+      total: trx.total,
+      shippingCourier: trx.shippingCourier,
+      shippingService: trx.shippingService,
+      shippingEtd: trx.shippingEtd,
+      destinationCity: trx.destinationCity,
+      trackingNumber: trx.trackingNumber,
+      hasTracking: Boolean(trx.trackingNumber && trx.shippingCourier),
+      items: trx.items,
+    };
+  },
+
+  // Live courier tracking for the buyer's own order.
+  trackOrder: async (tenantId: string, orderNumber: string, phone: string) => {
+    const trx = await catalogService.findCustomerOrder(tenantId, orderNumber, phone);
+    if (!trx.trackingNumber) {
+      throw badRequest('Pesanan ini belum dikirim / belum ada nomor resi.');
+    }
+    if (!trx.shippingCourier) {
+      throw badRequest('Data kurir pesanan ini belum lengkap, hubungi toko.');
+    }
+    return shippingService.trackWaybill({
+      waybill: trx.trackingNumber,
+      courier: trx.shippingCourier,
     });
   },
 

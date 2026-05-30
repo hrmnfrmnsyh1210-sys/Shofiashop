@@ -6,6 +6,7 @@ import {
   CreateTransactionSchema,
   ListTransactionQuerySchema,
   UpdateOnlineStatusSchema,
+  UpdateTrackingSchema,
 } from './transaction.schema.js';
 import { transactionService } from './transaction.service.js';
 import { activityService } from '../activity/activity.service.js';
@@ -70,6 +71,32 @@ router.patch(
       summary: `Mengubah status pesanan ${trx.transactionNumber} → ${trx.onlineStatus}`,
     });
     res.json(trx);
+  }),
+);
+
+router.patch(
+  '/:id/tracking',
+  validate(UpdateTrackingSchema),
+  asyncHandler(async (req, res) => {
+    const trx = await transactionService.updateTracking(
+      req.tenantId!,
+      req.params.id,
+      req.body,
+    );
+    activityService.log(req, {
+      action: 'transaction.tracking',
+      entityType: 'Transaction',
+      entityId: trx.id,
+      summary: `Mengatur resi ${trx.trackingNumber} untuk pesanan ${trx.transactionNumber}`,
+    });
+    res.json(trx);
+  }),
+);
+
+router.get(
+  '/:id/tracking',
+  asyncHandler(async (req, res) => {
+    res.json(await transactionService.track(req.tenantId!, req.params.id));
   }),
 );
 

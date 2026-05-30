@@ -70,9 +70,18 @@ model Tenant {
   address      String?  @db.Text
   logoUrl      String?  @db.LongText
   bankInfo     String?  @db.Text
-  // shipping origin (RajaOngkir city id + name snapshot) for online-order ongkir
+  // shipping origin (RajaOngkir/Komerce destination id + name snapshot) for online-order ongkir
   originCityId   String?
   originCityName String?
+  // full origin address breakdown (RajaOngkir hierarchy) for complete store address
+  originProvince    String?
+  originCity        String?
+  originDistrict    String?
+  originSubdistrict String?
+  originZipCode     String?
+  // sender contact used on shipping labels / courier pickup
+  senderName  String?
+  senderPhone String?
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -223,6 +232,8 @@ model Transaction {
   shippingService String? // service code, e.g. "REG"
   shippingEtd     String? // estimated delivery, e.g. "2-3"
   destinationCity String? // destination city name snapshot
+  trackingNumber  String? // resi / AWB number for shipment tracking
+  shippedAt       DateTime? // when the order was marked SHIPPED
 
   subtotal      Decimal @db.Decimal(14, 2)
   discount      Decimal @db.Decimal(14, 2) @default(0)

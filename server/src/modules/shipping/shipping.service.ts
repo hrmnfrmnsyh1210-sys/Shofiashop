@@ -26,6 +26,38 @@ interface KoCost {
   etd: string; // e.g. "2 day"
 }
 
+// --- Komerce waybill tracking response shapes (only the bits we use) ---
+interface KoTrackManifest {
+  manifest_code: string;
+  manifest_description: string;
+  manifest_date: string;
+  manifest_time: string;
+  city_name: string;
+}
+
+interface KoTrackResponse {
+  delivered: boolean;
+  summary: {
+    courier_code: string;
+    courier_name: string;
+    waybill_number: string;
+    service_code: string;
+    waybill_date: string;
+    shipper_name: string;
+    receiver_name: string;
+    origin: string;
+    destination: string;
+    status: string;
+  };
+  delivery_status: {
+    status: string;
+    pod_receiver: string;
+    pod_date: string;
+    pod_time: string;
+  };
+  manifest: KoTrackManifest[];
+}
+
 // --- Our normalized public shapes ---
 export interface Destination {
   id: string;
@@ -44,6 +76,29 @@ export interface ShippingOption {
   description: string;
   cost: number; // IDR
   etd: string; // e.g. "2-3" (cleaned), may be empty
+}
+
+export interface TrackingStep {
+  date: string; // ISO-ish date string from courier
+  time: string;
+  description: string;
+  location: string;
+}
+
+export interface TrackingInfo {
+  waybill: string;
+  courier: string; // courier code, e.g. "jne"
+  courierName: string;
+  service: string;
+  shipper: string;
+  receiver: string;
+  origin: string;
+  destination: string;
+  status: string; // current status text
+  delivered: boolean;
+  podReceiver: string | null; // proof-of-delivery receiver name
+  podDate: string | null;
+  history: TrackingStep[]; // newest first
 }
 
 const isEnabled = () => env.RAJAONGKIR_API_KEY.length > 0;
@@ -155,5 +210,50 @@ export const shippingService = {
     }
     options.sort((a, b) => a.cost - b.cost);
     return options;
+  },
+
+  // Track a shipment by its waybill/resi number for a given courier.
+  trackWaybill: async (params: {
+    waybill: string;
+    courier: string;
+  }): Promise<TrackingInfo> => {
+    ensureEnabled();
+    const courier = params.courier.trim().toLowerCase();
+    const awb = params.waybill.trim();
+    if (!awb) throw badRequest('Nomor resi tidak boleh kosong.');
+    if (!courier) throw badRequest('Kurir pengiriman belum diketahui untuk pesanan ini.');
+
+    const data = await call<KoTrackResponse>('/track/waybill', {
+      method: 'POST',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ awb, courier }).toString(),
+    });
+
+    const s = data?.summary;
+    const d = data?.delivery_status;
+    const history: TrackingStep[] = (data?.manifest ?? []).map((m) => ({
+      date: m.manifest_date,
+      time: m.manifest_time,
+      description: m.manifest_description,
+      location: m.city_name,
+    }));
+    // Komerce returns the manifest oldest-first; show newest first.
+    history.reverse();
+
+    return {
+      waybill: s?.waybill_number || awb,
+      courier,
+      courierName: s?.courier_name || courier.toUpperCase(),
+      service: s?.service_code || '',
+      shipper: s?.shipper_name || '',
+      receiver: s?.receiver_name || '',
+      origin: s?.origin || '',
+      destination: s?.destination || '',
+      status: d?.status || s?.status || '',
+      delivered: Boolean(data?.delivered),
+      podReceiver: d?.pod_receiver || null,
+      podDate: d?.pod_date || null,
+      history,
+    };
   },
 };

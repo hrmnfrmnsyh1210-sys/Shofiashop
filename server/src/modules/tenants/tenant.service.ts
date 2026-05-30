@@ -10,6 +10,39 @@ import type {
   UpdateTenantInput,
 } from './tenant.schema.js';
 
+// Optional tenant fields that may appear in create/update payloads. Builds a
+// Prisma data patch that only includes keys actually present in the input
+// (so callers never clobber a column they didn't intend to touch).
+const OPTIONAL_TENANT_FIELDS = [
+  'name',
+  'slug',
+  'description',
+  'whatsapp',
+  'email',
+  'address',
+  'customDomain',
+  'logoUrl',
+  'bankInfo',
+  'originCityId',
+  'originCityName',
+  'originProvince',
+  'originCity',
+  'originDistrict',
+  'originSubdistrict',
+  'originZipCode',
+  'senderName',
+  'senderPhone',
+  'isActive',
+] as const;
+
+const buildTenantPatch = (input: Record<string, unknown>) => {
+  const data: Record<string, unknown> = {};
+  for (const key of OPTIONAL_TENANT_FIELDS) {
+    if (input[key] !== undefined) data[key] = input[key];
+  }
+  return data;
+};
+
 export const tenantService = {
   list: async (q: ListTenantQuery) => {
     const where: Prisma.TenantWhereInput = {
@@ -65,17 +98,9 @@ export const tenantService = {
     return prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
         data: {
+          ...buildTenantPatch(input),
           name: input.name,
           slug: input.slug,
-          description: input.description ?? null,
-          whatsapp: input.whatsapp ?? null,
-          email: input.email ?? null,
-          address: input.address ?? null,
-          customDomain: input.customDomain ?? null,
-          logoUrl: input.logoUrl ?? null,
-          bankInfo: input.bankInfo ?? null,
-          originCityId: input.originCityId ?? null,
-          originCityName: input.originCityName ?? null,
           isActive: input.isActive,
         },
       });
@@ -108,22 +133,7 @@ export const tenantService = {
     }
     return prisma.tenant.update({
       where: { id },
-      data: {
-        ...(input.name !== undefined ? { name: input.name } : {}),
-        ...(input.slug !== undefined ? { slug: input.slug } : {}),
-        ...(input.description !== undefined ? { description: input.description } : {}),
-        ...(input.whatsapp !== undefined ? { whatsapp: input.whatsapp } : {}),
-        ...(input.email !== undefined ? { email: input.email } : {}),
-        ...(input.address !== undefined ? { address: input.address } : {}),
-        ...(input.customDomain !== undefined ? { customDomain: input.customDomain } : {}),
-        ...(input.logoUrl !== undefined ? { logoUrl: input.logoUrl } : {}),
-        ...(input.bankInfo !== undefined ? { bankInfo: input.bankInfo } : {}),
-        ...(input.originCityId !== undefined ? { originCityId: input.originCityId } : {}),
-        ...(input.originCityName !== undefined
-          ? { originCityName: input.originCityName }
-          : {}),
-        ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
-      },
+      data: buildTenantPatch(input),
     });
   },
 
@@ -144,19 +154,7 @@ export const tenantService = {
     await tenantService.getOwn(tenantId);
     return prisma.tenant.update({
       where: { id: tenantId },
-      data: {
-        ...(input.name !== undefined ? { name: input.name } : {}),
-        ...(input.description !== undefined ? { description: input.description } : {}),
-        ...(input.whatsapp !== undefined ? { whatsapp: input.whatsapp } : {}),
-        ...(input.email !== undefined ? { email: input.email } : {}),
-        ...(input.address !== undefined ? { address: input.address } : {}),
-        ...(input.logoUrl !== undefined ? { logoUrl: input.logoUrl } : {}),
-        ...(input.bankInfo !== undefined ? { bankInfo: input.bankInfo } : {}),
-        ...(input.originCityId !== undefined ? { originCityId: input.originCityId } : {}),
-        ...(input.originCityName !== undefined
-          ? { originCityName: input.originCityName }
-          : {}),
-      },
+      data: buildTenantPatch(input),
     });
   },
 };

@@ -6,6 +6,7 @@ import { prisma } from '../../lib/prisma.js';
 import {
   CheckoutSchema,
   ListCatalogQuerySchema,
+  OrderLookupQuerySchema,
 } from './catalog.schema.js';
 import { ShippingCostSchema } from '../shipping/shipping.schema.js';
 import { catalogService } from './catalog.service.js';
@@ -77,6 +78,34 @@ router.post(
       await catalogService.shippingCost(
         (req as { tenantId: string }).tenantId,
         req.body,
+      ),
+    );
+  }),
+);
+
+router.get(
+  '/:slug/orders/:orderNumber',
+  validate(OrderLookupQuerySchema, 'query'),
+  asyncHandler(async (req, res) => {
+    res.json(
+      await catalogService.getOrderStatus(
+        (req as { tenantId: string }).tenantId,
+        req.params.orderNumber,
+        (req.query as { phone: string }).phone,
+      ),
+    );
+  }),
+);
+
+router.get(
+  '/:slug/orders/:orderNumber/tracking',
+  validate(OrderLookupQuerySchema, 'query'),
+  asyncHandler(async (req, res) => {
+    res.json(
+      await catalogService.trackOrder(
+        (req as { tenantId: string }).tenantId,
+        req.params.orderNumber,
+        (req.query as { phone: string }).phone,
       ),
     );
   }),

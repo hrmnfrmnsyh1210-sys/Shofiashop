@@ -24,6 +24,7 @@ import ProductDetail from './pages/shop/ProductDetail';
 import Cart from './pages/shop/Cart';
 import Checkout from './pages/shop/Checkout';
 import OrderConfirm from './pages/shop/OrderConfirm';
+import OrderTracking from './pages/shop/OrderTracking';
 
 export default function App() {
   return (
@@ -40,6 +41,7 @@ export default function App() {
             <Route path="cart" element={<Cart />} />
             <Route path="checkout" element={<Checkout />} />
             <Route path="order/:orderNumber" element={<OrderConfirm />} />
+            <Route path="lacak" element={<OrderTracking />} />
           </Route>
 
           {/* Legacy /shop redirects to default tenant — keep for now */}

@@ -1,5 +1,5 @@
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { CheckCircle2, MessageCircle, ArrowRight, Copy } from 'lucide-react';
+import { CheckCircle2, MessageCircle, ArrowRight, Copy, PackageSearch } from 'lucide-react';
 import { useState } from 'react';
 import { rupiah } from '../../lib/format';
 import { useStore } from '../../lib/store';
@@ -121,6 +121,12 @@ export default function OrderConfirm() {
               <MessageCircle className="w-4 h-4" /> Konfirmasi via WhatsApp
             </a>
           )}
+          <Link
+            to={`${path('lacak')}?order=${encodeURIComponent(orderNumber)}`}
+            className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
+          >
+            <PackageSearch className="w-4 h-4" /> Lacak Pesanan
+          </Link>
           <Link
             to={path('')}
             className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl flex items-center justify-center gap-2"

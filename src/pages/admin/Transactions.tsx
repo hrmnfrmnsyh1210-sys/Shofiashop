@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Eye, Ban, Loader2, X } from 'lucide-react';
+import { Eye, Ban, Loader2, X, Truck, MapPin, Save } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { PageHeader } from '../../components/PageHeader';
 import { Modal } from '../../components/Modal';
+import { TrackingTimeline } from '../../components/TrackingTimeline';
 import { rupiah, formatDateTime } from '../../lib/format';
 import type {
   OnlineOrderStatus,
   PaginatedResponse,
+  TrackingInfo,
   Transaction,
   TransactionChannel,
   TransactionStatus,
@@ -42,6 +44,13 @@ export default function Transactions() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  // shipment tracking (resi) state, scoped to the open detail
+  const [resiInput, setResiInput] = useState('');
+  const [savingResi, setSavingResi] = useState(false);
+  const [tracking, setTracking] = useState<TrackingInfo | null>(null);
+  const [trackingLoading, setTrackingLoading] = useState(false);
+  const [trackingError, setTrackingError] = useState<string | null>(null);
+
   const load = async () => {
     setLoading(true);
     setError(null);
@@ -65,13 +74,61 @@ export default function Transactions() {
   const openDetail = async (t: Transaction) => {
     setDetailLoading(true);
     setActionError(null);
+    setTracking(null);
+    setTrackingError(null);
     try {
       const full = await api.get<Transaction>(`/transactions/${t.id}`);
       setDetail(full);
+      setResiInput(full.trackingNumber ?? '');
     } catch (err) {
       alert(err instanceof ApiError ? err.message : 'Gagal memuat detail');
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  const closeDetail = () => {
+    setDetail(null);
+    setTracking(null);
+    setTrackingError(null);
+    setResiInput('');
+  };
+
+  const saveTracking = async () => {
+    if (!detail) return;
+    const trackingNumber = resiInput.trim();
+    if (trackingNumber.length < 3) {
+      setActionError('Nomor resi tidak valid.');
+      return;
+    }
+    setSavingResi(true);
+    setActionError(null);
+    try {
+      const updated = await api.patch<Transaction>(
+        `/transactions/${detail.id}/tracking`,
+        { trackingNumber },
+      );
+      setDetail(updated);
+      await load();
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Gagal menyimpan resi');
+    } finally {
+      setSavingResi(false);
+    }
+  };
+
+  const loadTracking = async () => {
+    if (!detail) return;
+    setTrackingLoading(true);
+    setTrackingError(null);
+    setTracking(null);
+    try {
+      const info = await api.get<TrackingInfo>(`/transactions/${detail.id}/tracking`);
+      setTracking(info);
+    } catch (err) {
+      setTrackingError(err instanceof ApiError ? err.message : 'Gagal melacak pengiriman');
+    } finally {
+      setTrackingLoading(false);
     }
   };
 
@@ -176,7 +233,7 @@ export default function Transactions() {
         </div>
       )}
 
-      <Modal open={!!detail} onClose={() => setDetail(null)} title={detail ? `Detail ${detail.transactionNumber}` : ''} size="lg">
+      <Modal open={!!detail} onClose={closeDetail} title={detail ? `Detail ${detail.transactionNumber}` : ''} size="lg">
         {detail && (
           <div className="space-y-4 text-sm">
             {actionError && (
@@ -248,6 +305,71 @@ export default function Transactions() {
               <Row label="Dibayar" value={rupiah(detail.paymentAmount)} />
               <Row label="Kembalian" value={rupiah(detail.changeAmount)} />
             </div>
+
+            {detail.channel === 'ONLINE' && (
+              <div className="rounded-lg border border-slate-200 p-3 space-y-3">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                  <Truck className="w-4 h-4 text-rose-500" /> Pengiriman & Pelacakan
+                </div>
+
+                {!detail.shippingCourier && (
+                  <div className="bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-md px-3 py-2">
+                    Pesanan ini belum punya data kurir, jadi resi tidak bisa dilacak otomatis.
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
+                    Nomor Resi {detail.shippingCourier ? `(${detail.shippingCourier.toUpperCase()})` : ''}
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      value={resiInput}
+                      onChange={(e) => setResiInput(e.target.value)}
+                      placeholder="Masukkan nomor resi pengiriman"
+                      className="flex-1 px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    />
+                    <button
+                      onClick={saveTracking}
+                      disabled={savingResi || resiInput.trim() === (detail.trackingNumber ?? '')}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-300 text-white text-xs font-bold rounded-lg whitespace-nowrap"
+                    >
+                      {savingResi ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                      Simpan
+                    </button>
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    Menyimpan resi otomatis mengubah status pesanan menjadi SHIPPED.
+                    {detail.shippedAt && ` Dikirim ${formatDateTime(detail.shippedAt)}.`}
+                  </p>
+                </div>
+
+                {detail.trackingNumber && detail.shippingCourier && (
+                  <div>
+                    <button
+                      onClick={loadTracking}
+                      disabled={trackingLoading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 disabled:opacity-60 text-rose-700 text-xs font-bold rounded-lg"
+                    >
+                      {trackingLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MapPin className="w-3.5 h-3.5" />}
+                      Lacak Pengiriman
+                    </button>
+
+                    {trackingError && (
+                      <div className="mt-2 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-md px-3 py-2">
+                        {trackingError}
+                      </div>
+                    )}
+
+                    {tracking && (
+                      <div className="mt-3">
+                        <TrackingTimeline tracking={tracking} />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-200">
               {detail.channel === 'ONLINE' ? (

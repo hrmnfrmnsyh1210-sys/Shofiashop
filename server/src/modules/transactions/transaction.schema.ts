@@ -55,6 +55,16 @@ export const UpdateOnlineStatusSchema = z.object({
   ]),
 });
 
+// Set / update the shipment tracking (resi) for an online order. Saving a resi
+// also moves the order to SHIPPED. The courier can be overridden here in case
+// it wasn't captured at checkout.
+export const UpdateTrackingSchema = z.object({
+  trackingNumber: z.string().min(3).max(60),
+  shippingCourier: z.string().max(120).optional().nullable(),
+  shippingService: z.string().max(120).optional().nullable(),
+});
+
 export type CreateTransactionInput = z.infer<typeof CreateTransactionSchema>;
 export type ListTransactionQuery = z.infer<typeof ListTransactionQuerySchema>;
 export type UpdateOnlineStatusInput = z.infer<typeof UpdateOnlineStatusSchema>;
+export type UpdateTrackingInput = z.infer<typeof UpdateTrackingSchema>;

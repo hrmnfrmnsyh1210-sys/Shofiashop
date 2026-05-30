@@ -70,6 +70,14 @@ function ShopShell() {
             >
               Belanja
             </NavLink>
+            <NavLink
+              to={path('lacak')}
+              className={({ isActive }) =>
+                `font-medium transition-colors ${isActive ? 'text-rose-500' : 'text-slate-600 hover:text-rose-500'}`
+              }
+            >
+              Lacak Pesanan
+            </NavLink>
             <a href="#kontak" className="font-medium text-slate-600 hover:text-rose-500">
               Kontak
             </a>

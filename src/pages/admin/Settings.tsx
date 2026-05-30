@@ -17,6 +17,13 @@ type Form = {
   logoUrl: string;
   originCityId: string;
   originCityName: string;
+  originProvince: string;
+  originCity: string;
+  originDistrict: string;
+  originSubdistrict: string;
+  originZipCode: string;
+  senderName: string;
+  senderPhone: string;
 };
 
 const emptyForm: Form = {
@@ -29,6 +36,13 @@ const emptyForm: Form = {
   logoUrl: '',
   originCityId: '',
   originCityName: '',
+  originProvince: '',
+  originCity: '',
+  originDistrict: '',
+  originSubdistrict: '',
+  originZipCode: '',
+  senderName: '',
+  senderPhone: '',
 };
 
 export default function Settings() {
@@ -69,6 +83,13 @@ export default function Settings() {
           logoUrl: t.logoUrl ?? '',
           originCityId: t.originCityId ?? '',
           originCityName: t.originCityName ?? '',
+          originProvince: t.originProvince ?? '',
+          originCity: t.originCity ?? '',
+          originDistrict: t.originDistrict ?? '',
+          originSubdistrict: t.originSubdistrict ?? '',
+          originZipCode: t.originZipCode ?? '',
+          senderName: t.senderName ?? '',
+          senderPhone: t.senderPhone ?? '',
         });
       })
       .catch((err) => {
@@ -119,6 +140,13 @@ export default function Settings() {
         logoUrl: form.logoUrl || null,
         originCityId: form.originCityId || null,
         originCityName: form.originCityName || null,
+        originProvince: form.originProvince || null,
+        originCity: form.originCity || null,
+        originDistrict: form.originDistrict || null,
+        originSubdistrict: form.originSubdistrict || null,
+        originZipCode: form.originZipCode.trim() || null,
+        senderName: form.senderName.trim() || null,
+        senderPhone: form.senderPhone.trim() || null,
       };
       const updated = await api.patch<Tenant>('/admin/tenant', payload);
       setTenant(updated);
@@ -295,7 +323,7 @@ export default function Settings() {
             ) : (
               <>
                 <span className="block text-xs font-semibold text-slate-700 mb-1">
-                  Lokasi Asal Pengiriman
+                  Lokasi Asal Pengiriman (Kecamatan/Kelurahan)
                 </span>
                 <DestinationSearch
                   selectedLabel={form.originCityName || null}
@@ -305,6 +333,12 @@ export default function Settings() {
                       ...form,
                       originCityId: d?.id ?? '',
                       originCityName: d?.label ?? '',
+                      originProvince: d?.province ?? '',
+                      originCity: d?.city ?? '',
+                      originDistrict: d?.district ?? '',
+                      originSubdistrict: d?.subdistrict ?? '',
+                      // prefill the postal code from the picked destination; still editable
+                      originZipCode: d?.zipCode ?? '',
                     })
                   }
                   placeholder="Ketik kota/kecamatan asal, mis. Tanah Sareal Bogor"
@@ -312,6 +346,55 @@ export default function Settings() {
                 <p className="mt-2 text-[11px] text-slate-400">
                   Ongkir pesanan online dihitung dari lokasi asal ini ke tujuan pembeli.
                   Ketik minimal 3 huruf lalu pilih dari daftar.
+                </p>
+
+                {/* Rincian alamat asal (terisi otomatis dari pilihan di atas) */}
+                {form.originCityId && (
+                  <div className="mt-3 grid sm:grid-cols-2 gap-3">
+                    <Field label="Provinsi">
+                      <input value={form.originProvince} disabled className={inputCls + ' bg-slate-50 text-slate-500'} />
+                    </Field>
+                    <Field label="Kota/Kabupaten">
+                      <input value={form.originCity} disabled className={inputCls + ' bg-slate-50 text-slate-500'} />
+                    </Field>
+                    <Field label="Kecamatan">
+                      <input value={form.originDistrict} disabled className={inputCls + ' bg-slate-50 text-slate-500'} />
+                    </Field>
+                    <Field label="Kelurahan/Desa">
+                      <input value={form.originSubdistrict} disabled className={inputCls + ' bg-slate-50 text-slate-500'} />
+                    </Field>
+                    <Field label="Kode Pos">
+                      <input
+                        value={form.originZipCode}
+                        onChange={(e) => setForm({ ...form, originZipCode: e.target.value })}
+                        className={inputCls}
+                        placeholder="16161"
+                        inputMode="numeric"
+                      />
+                    </Field>
+                  </div>
+                )}
+
+                <div className="mt-3 grid sm:grid-cols-2 gap-3">
+                  <Field label="Nama Pengirim">
+                    <input
+                      value={form.senderName}
+                      onChange={(e) => setForm({ ...form, senderName: e.target.value })}
+                      className={inputCls}
+                      placeholder="Nama yang tertera di label paket"
+                    />
+                  </Field>
+                  <Field label="No. HP Pengirim">
+                    <input
+                      value={form.senderPhone}
+                      onChange={(e) => setForm({ ...form, senderPhone: e.target.value })}
+                      className={inputCls}
+                      placeholder="6281234567890"
+                    />
+                  </Field>
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Nama & HP pengirim dipakai untuk label paket dan penjemputan kurir.
                 </p>
               </>
             )}

@@ -13,6 +13,13 @@ export interface Tenant {
   bankInfo: string | null;
   originCityId: string | null;
   originCityName: string | null;
+  originProvince: string | null;
+  originCity: string | null;
+  originDistrict: string | null;
+  originSubdistrict: string | null;
+  originZipCode: string | null;
+  senderName: string | null;
+  senderPhone: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -137,6 +144,8 @@ export interface Transaction {
   shippingService: string | null;
   shippingEtd: string | null;
   destinationCity: string | null;
+  trackingNumber: string | null;
+  shippedAt: string | null;
   onlineStatus: OnlineOrderStatus | null;
   subtotal: string;
   discount: string;
@@ -211,6 +220,57 @@ export interface ShippingOption {
   description: string;
   cost: number;
   etd: string;
+}
+
+export interface TrackingStep {
+  date: string;
+  time: string;
+  description: string;
+  location: string;
+}
+
+export interface TrackingInfo {
+  waybill: string;
+  courier: string;
+  courierName: string;
+  service: string;
+  shipper: string;
+  receiver: string;
+  origin: string;
+  destination: string;
+  status: string;
+  delivered: boolean;
+  podReceiver: string | null;
+  podDate: string | null;
+  history: TrackingStep[];
+}
+
+export interface CustomerOrderItem {
+  id: string;
+  productName: string;
+  quantity: number;
+  unitPrice: string;
+  subtotal: string;
+}
+
+export interface CustomerOrderStatus {
+  orderNumber: string;
+  status: TransactionStatus;
+  onlineStatus: OnlineOrderStatus | null;
+  createdAt: string;
+  shippedAt: string | null;
+  customerName: string | null;
+  shippingAddress: string | null;
+  subtotal: string;
+  shippingFee: string;
+  total: string;
+  shippingCourier: string | null;
+  shippingService: string | null;
+  shippingEtd: string | null;
+  destinationCity: string | null;
+  trackingNumber: string | null;
+  hasTracking: boolean;
+  items: CustomerOrderItem[];
 }
 
 export interface CheckoutResponse {

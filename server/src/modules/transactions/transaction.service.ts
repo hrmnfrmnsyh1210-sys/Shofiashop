@@ -2,10 +2,12 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { badRequest, conflict, notFound } from '../../lib/httpError.js';
 import { generateTransactionNumber } from '../../lib/transactionNumber.js';
+import { shippingService } from '../shipping/shipping.service.js';
 import type {
   CreateTransactionInput,
   ListTransactionQuery,
   UpdateOnlineStatusInput,
+  UpdateTrackingInput,
 } from './transaction.schema.js';
 
 const D = (n: number | Prisma.Decimal) => new Prisma.Decimal(n);
@@ -272,8 +274,56 @@ export const transactionService = {
     }
     return prisma.transaction.update({
       where: { id },
-      data: { onlineStatus: input.onlineStatus },
+      data: {
+        onlineStatus: input.onlineStatus,
+        // stamp the ship date the first time it reaches SHIPPED
+        ...(input.onlineStatus === 'SHIPPED' && !trx.shippedAt
+          ? { shippedAt: new Date() }
+          : {}),
+      },
       include: { items: true },
+    });
+  },
+
+  // Save the resi/AWB (and optional courier override) for an online order, and
+  // advance it to SHIPPED.
+  updateTracking: async (
+    tenantId: string,
+    id: string,
+    input: UpdateTrackingInput,
+  ) => {
+    const trx = await transactionService.get(tenantId, id);
+    if (trx.channel !== 'ONLINE') {
+      throw badRequest('Hanya pesanan online yang punya nomor resi.');
+    }
+    return prisma.transaction.update({
+      where: { id },
+      data: {
+        trackingNumber: input.trackingNumber.trim(),
+        ...(input.shippingCourier ? { shippingCourier: input.shippingCourier } : {}),
+        ...(input.shippingService ? { shippingService: input.shippingService } : {}),
+        onlineStatus: 'SHIPPED',
+        shippedAt: trx.shippedAt ?? new Date(),
+      },
+      include: { items: true },
+    });
+  },
+
+  // Fetch live courier tracking for an online order from its stored resi.
+  track: async (tenantId: string, id: string) => {
+    const trx = await transactionService.get(tenantId, id);
+    if (trx.channel !== 'ONLINE') {
+      throw badRequest('Hanya pesanan online yang bisa dilacak.');
+    }
+    if (!trx.trackingNumber) {
+      throw badRequest('Pesanan ini belum memiliki nomor resi.');
+    }
+    if (!trx.shippingCourier) {
+      throw badRequest('Kurir pengiriman belum diatur untuk pesanan ini.');
+    }
+    return shippingService.trackWaybill({
+      waybill: trx.trackingNumber,
+      courier: trx.shippingCourier,
     });
   },
 };

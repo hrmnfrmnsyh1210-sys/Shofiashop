@@ -31,7 +31,14 @@ export const CreateTenantSchema = z.object({
   logoUrl: LogoUrlSchema.optional().nullable(),
   bankInfo: z.string().max(1000).optional().nullable(),
   originCityId: z.string().max(20).optional().nullable(),
-  originCityName: z.string().max(120).optional().nullable(),
+  originCityName: z.string().max(160).optional().nullable(),
+  originProvince: z.string().max(120).optional().nullable(),
+  originCity: z.string().max(120).optional().nullable(),
+  originDistrict: z.string().max(120).optional().nullable(),
+  originSubdistrict: z.string().max(120).optional().nullable(),
+  originZipCode: z.string().max(10).optional().nullable(),
+  senderName: z.string().max(120).optional().nullable(),
+  senderPhone: z.string().max(32).optional().nullable(),
   isActive: z.boolean().default(true),
   // optional bootstrap admin for the new tenant
   adminName: z.string().min(2).max(120).optional(),
@@ -65,7 +72,14 @@ export const UpdateOwnTenantSchema = z.object({
   logoUrl: LogoUrlSchema.optional().nullable(),
   bankInfo: z.string().max(1000).optional().nullable(),
   originCityId: z.string().max(20).optional().nullable(),
-  originCityName: z.string().max(120).optional().nullable(),
+  originCityName: z.string().max(160).optional().nullable(),
+  originProvince: z.string().max(120).optional().nullable(),
+  originCity: z.string().max(120).optional().nullable(),
+  originDistrict: z.string().max(120).optional().nullable(),
+  originSubdistrict: z.string().max(120).optional().nullable(),
+  originZipCode: z.string().max(10).optional().nullable(),
+  senderName: z.string().max(120).optional().nullable(),
+  senderPhone: z.string().max(32).optional().nullable(),
 });
 
 export type CreateTenantInput = z.infer<typeof CreateTenantSchema>;

@@ -30,5 +30,12 @@ export const CheckoutSchema = z.object({
   items: z.array(CheckoutItemSchema).min(1),
 });
 
+// Public order lookup/tracking requires the customer's phone as a lightweight
+// ownership check (order number alone must not reveal another buyer's order).
+export const OrderLookupQuerySchema = z.object({
+  phone: z.string().min(4).max(32),
+});
+
 export type ListCatalogQuery = z.infer<typeof ListCatalogQuerySchema>;
 export type CheckoutInput = z.infer<typeof CheckoutSchema>;
+export type OrderLookupQuery = z.infer<typeof OrderLookupQuerySchema>;
