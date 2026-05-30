@@ -2,8 +2,9 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { badRequest, conflict, notFound } from '../../lib/httpError.js';
 import { generateTransactionNumber } from '../../lib/transactionNumber.js';
-import { shippingService } from '../shipping/shipping.service.js';
+import { komshipService } from '../shipping/komship.service.js';
 import type {
+  CreateShipmentInput,
   CreateTransactionInput,
   ListTransactionQuery,
   UpdateOnlineStatusInput,
@@ -158,6 +159,7 @@ export const transactionService = {
           shippingService: input.shippingService ?? null,
           shippingEtd: input.shippingEtd ?? null,
           destinationCity: input.destinationCity ?? null,
+          destinationId: input.destinationId ?? null,
           onlineStatus: input.channel === 'ONLINE' ? 'NEW' : null,
           subtotal,
           discount: headerDiscount,
@@ -321,9 +323,129 @@ export const transactionService = {
     if (!trx.shippingCourier) {
       throw badRequest('Kurir pengiriman belum diatur untuk pesanan ini.');
     }
-    return shippingService.trackWaybill({
+    return komshipService.trackWaybill({
       waybill: trx.trackingNumber,
       courier: trx.shippingCourier,
+    });
+  },
+
+  // Auto-create a Komship delivery order, schedule pickup, and capture the resi
+  // (AWB). Advances the order to SHIPPED. This replaces manual resi entry when
+  // Komship is configured.
+  createShipment: async (tenantId: string, id: string, input: CreateShipmentInput) => {
+    const trx = await transactionService.get(tenantId, id);
+    if (trx.channel !== 'ONLINE') {
+      throw badRequest('Hanya pesanan online yang bisa dikirim otomatis.');
+    }
+    if (trx.trackingNumber) {
+      throw badRequest('Pesanan ini sudah memiliki resi.');
+    }
+    if (!trx.shippingCourier || !trx.shippingService) {
+      throw badRequest('Kurir/layanan pengiriman pesanan ini belum lengkap.');
+    }
+    if (!trx.destinationId) {
+      throw badRequest('Tujuan pengiriman pesanan ini tidak punya ID wilayah. Pesanan lama mungkin perlu diinput resi manual.');
+    }
+
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) throw notFound('Toko tidak ditemukan.');
+    if (!tenant.originCityId) {
+      throw badRequest('Toko belum mengatur lokasi asal pengiriman di Pengaturan.');
+    }
+    const shipperName = tenant.senderName || tenant.name;
+    const shipperPhone = tenant.senderPhone || tenant.whatsapp;
+    if (!shipperPhone) {
+      throw badRequest('No. HP pengirim belum diisi di Pengaturan Toko.');
+    }
+
+    // Per-item product detail (weight needed for the courier label).
+    const products = await prisma.product.findMany({
+      where: { id: { in: trx.items.map((i) => i.productId) }, tenantId },
+      select: { id: true, weight: true },
+    });
+    const weightOf = new Map(products.map((p) => [p.id, p.weight]));
+
+    const isCod = trx.paymentMethod === 'CASH';
+    const grandTotal = Math.round(Number(trx.total));
+    const shipperAddress = [
+      tenant.address,
+      tenant.originSubdistrict,
+      tenant.originDistrict,
+      tenant.originCity,
+      tenant.originProvince,
+      tenant.originZipCode,
+    ]
+      .filter(Boolean)
+      .join(', ');
+
+    const order = await komshipService.createOrder({
+      order_date: trx.createdAt.toISOString(),
+      brand_name: tenant.name,
+      shipper_name: shipperName,
+      shipper_phone: shipperPhone,
+      shipper_email: tenant.email ?? '',
+      shipper_destination_id: Number(tenant.originCityId),
+      shipper_address: shipperAddress || tenant.name,
+      origin_pin_point: '',
+      receiver_name: trx.customerName ?? '',
+      receiver_phone: trx.customerPhone ?? '',
+      receiver_email: '',
+      receiver_destination_id: Number(trx.destinationId),
+      receiver_address: trx.shippingAddress ?? '',
+      destination_pin_point: '',
+      shipping: trx.shippingCourier.toUpperCase(),
+      shipping_type: trx.shippingService,
+      payment_method: isCod ? 'COD' : 'BANK TRANSFER',
+      shipping_cost: Math.round(Number(trx.shippingFee)),
+      shipping_cashback: 0,
+      service_fee: 0,
+      additional_cost: 0,
+      grand_total: grandTotal,
+      cod_value: isCod ? grandTotal : 0,
+      insurance_value: 0,
+      order_details: trx.items.map((it) => ({
+        product_name: it.productName,
+        product_variant_name: '',
+        product_price: Math.round(Number(it.unitPrice)),
+        product_weight: weightOf.get(it.productId) ?? 1000,
+        product_width: 10,
+        product_height: 10,
+        product_length: 10,
+        qty: it.quantity,
+        subtotal: Math.round(Number(it.subtotal)),
+      })),
+    });
+
+    // Schedule pickup — this returns the AWB (resi).
+    const today = new Date().toISOString().slice(0, 10);
+    const pickup = await komshipService.requestPickup({
+      orderNo: order.order_no,
+      pickupDate: input.pickupDate ?? today,
+      pickupTime: input.pickupTime,
+      pickupVehicle: input.pickupVehicle,
+    });
+
+    // The AWB may also be fetched via order detail (and the live tracking URL).
+    let awb = pickup?.awb ?? '';
+    let labelUrl: string | null = null;
+    try {
+      const detail = await komshipService.orderDetail(order.order_no);
+      if (detail.awb) awb = detail.awb;
+      labelUrl = detail.live_tracking_url || null;
+    } catch {
+      // detail is best-effort; we already have the order/awb from pickup
+    }
+
+    return prisma.transaction.update({
+      where: { id },
+      data: {
+        shipmentOrderNo: order.order_no,
+        trackingNumber: awb || null,
+        labelUrl,
+        onlineStatus: 'SHIPPED',
+        shippedAt: trx.shippedAt ?? new Date(),
+      },
+      include: { items: true },
     });
   },
 };

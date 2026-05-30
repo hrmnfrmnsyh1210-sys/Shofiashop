@@ -3,6 +3,7 @@ import { asyncHandler } from '../../lib/asyncHandler.js';
 import { validate } from '../../middleware/validate.js';
 import { requireAuth, requireRole, requireTenant } from '../../middleware/auth.js';
 import {
+  CreateShipmentSchema,
   CreateTransactionSchema,
   ListTransactionQuerySchema,
   UpdateOnlineStatusSchema,
@@ -97,6 +98,26 @@ router.get(
   '/:id/tracking',
   asyncHandler(async (req, res) => {
     res.json(await transactionService.track(req.tenantId!, req.params.id));
+  }),
+);
+
+router.post(
+  '/:id/shipment',
+  requireRole('ADMIN', 'MANAGER'),
+  validate(CreateShipmentSchema),
+  asyncHandler(async (req, res) => {
+    const trx = await transactionService.createShipment(
+      req.tenantId!,
+      req.params.id,
+      req.body,
+    );
+    activityService.log(req, {
+      action: 'transaction.shipment',
+      entityType: 'Transaction',
+      entityId: trx.id,
+      summary: `Membuat pengiriman & resi ${trx.trackingNumber ?? trx.shipmentOrderNo} untuk pesanan ${trx.transactionNumber}`,
+    });
+    res.json(trx);
   }),
 );
 

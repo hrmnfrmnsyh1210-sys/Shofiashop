@@ -21,6 +21,7 @@ export const CreateTransactionSchema = z.object({
   shippingService: z.string().max(120).optional().nullable(),
   shippingEtd: z.string().max(60).optional().nullable(),
   destinationCity: z.string().max(120).optional().nullable(),
+  destinationId: z.string().max(20).optional().nullable(),
   discount: z.number().nonnegative().default(0), // header-level discount
   tax: z.number().nonnegative().default(0),
   shippingFee: z.number().nonnegative().default(0),
@@ -64,7 +65,22 @@ export const UpdateTrackingSchema = z.object({
   shippingService: z.string().max(120).optional().nullable(),
 });
 
+// Create an automatic shipment (Komship) and generate the resi. All fields are
+// optional; pickup date defaults to today and time/vehicle fall back to env.
+export const CreateShipmentSchema = z.object({
+  pickupDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'pickupDate must be YYYY-MM-DD')
+    .optional(),
+  pickupTime: z
+    .string()
+    .regex(/^\d{2}:\d{2}$/, 'pickupTime must be HH:MM')
+    .optional(),
+  pickupVehicle: z.enum(['Motor', 'Mobil', 'Truk']).optional(),
+});
+
 export type CreateTransactionInput = z.infer<typeof CreateTransactionSchema>;
 export type ListTransactionQuery = z.infer<typeof ListTransactionQuerySchema>;
 export type UpdateOnlineStatusInput = z.infer<typeof UpdateOnlineStatusSchema>;
 export type UpdateTrackingInput = z.infer<typeof UpdateTrackingSchema>;
+export type CreateShipmentInput = z.infer<typeof CreateShipmentSchema>;

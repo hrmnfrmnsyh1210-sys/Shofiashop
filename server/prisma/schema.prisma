@@ -232,7 +232,10 @@ model Transaction {
   shippingService String? // service code, e.g. "REG"
   shippingEtd     String? // estimated delivery, e.g. "2-3"
   destinationCity String? // destination city name snapshot
+  destinationId   String? // Komerce destination id of the receiver (for Komship order)
   trackingNumber  String? // resi / AWB number for shipment tracking
+  shipmentOrderNo String? // Komship order number (order_no) once a shipment is created
+  labelUrl        String? @db.Text // Komship live tracking / label URL
   shippedAt       DateTime? // when the order was marked SHIPPED
 
   subtotal      Decimal @db.Decimal(14, 2)

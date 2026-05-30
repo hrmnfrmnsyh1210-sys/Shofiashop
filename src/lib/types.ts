@@ -144,7 +144,10 @@ export interface Transaction {
   shippingService: string | null;
   shippingEtd: string | null;
   destinationCity: string | null;
+  destinationId: string | null;
   trackingNumber: string | null;
+  shipmentOrderNo: string | null;
+  labelUrl: string | null;
   shippedAt: string | null;
   onlineStatus: OnlineOrderStatus | null;
   subtotal: string;
@@ -223,26 +226,17 @@ export interface ShippingOption {
 }
 
 export interface TrackingStep {
-  date: string;
-  time: string;
+  date: string; // "YYYY-MM-DD HH:MM:SS"
+  status: string;
   description: string;
-  location: string;
 }
 
 export interface TrackingInfo {
   waybill: string;
   courier: string;
-  courierName: string;
-  service: string;
-  shipper: string;
-  receiver: string;
-  origin: string;
-  destination: string;
-  status: string;
+  status: string; // last status text
   delivered: boolean;
-  podReceiver: string | null;
-  podDate: string | null;
-  history: TrackingStep[];
+  history: TrackingStep[]; // newest first
 }
 
 export interface CustomerOrderItem {

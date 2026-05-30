@@ -151,12 +151,13 @@ export default function Checkout() {
           shippingAddress: shippingAddress.trim(),
           paymentMethod,
           shippingFee: shippingFeeN,
-          shippingCourier: selectedOption
-            ? `${selectedOption.courierName} (${selectedOption.courier.toUpperCase()})`
-            : null,
+          // store the courier name as Komerce knows it (e.g. "JNE") — used for
+          // tracking (history-airway-bill) and Komship auto-resi
+          shippingCourier: selectedOption?.courier ?? null,
           shippingService: selectedOption?.service ?? null,
           shippingEtd: selectedOption?.etd || null,
           destinationCity: destination?.label ?? null,
+          destinationId: destination?.id ?? null,
           notes: notes.trim() || null,
           items: lines.map((l) => ({ productId: l.productId, quantity: l.quantity })),
         },

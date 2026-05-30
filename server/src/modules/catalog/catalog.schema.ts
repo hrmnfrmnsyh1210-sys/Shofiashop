@@ -27,6 +27,7 @@ export const CheckoutSchema = z.object({
   shippingService: z.string().max(120).optional().nullable(),
   shippingEtd: z.string().max(60).optional().nullable(),
   destinationCity: z.string().max(120).optional().nullable(),
+  destinationId: z.string().max(20).optional().nullable(),
   items: z.array(CheckoutItemSchema).min(1),
 });
 

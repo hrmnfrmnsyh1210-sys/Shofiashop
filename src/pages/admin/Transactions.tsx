@@ -47,9 +47,23 @@ export default function Transactions() {
   // shipment tracking (resi) state, scoped to the open detail
   const [resiInput, setResiInput] = useState('');
   const [savingResi, setSavingResi] = useState(false);
+  const [creatingShipment, setCreatingShipment] = useState(false);
+  const [komshipEnabled, setKomshipEnabled] = useState(false);
   const [tracking, setTracking] = useState<TrackingInfo | null>(null);
   const [trackingLoading, setTrackingLoading] = useState(false);
   const [trackingError, setTrackingError] = useState<string | null>(null);
+
+  // Detect whether automatic resi (Komship) is configured.
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{ komshipEnabled?: boolean }>('/shipping/enabled')
+      .then((r) => !cancelled && setKomshipEnabled(Boolean(r.komshipEnabled)))
+      .catch(() => !cancelled && setKomshipEnabled(false));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -114,6 +128,23 @@ export default function Transactions() {
       setActionError(err instanceof ApiError ? err.message : 'Gagal menyimpan resi');
     } finally {
       setSavingResi(false);
+    }
+  };
+
+  const createShipment = async () => {
+    if (!detail) return;
+    if (!confirm('Buat pengiriman & resi otomatis lewat Komship untuk pesanan ini?')) return;
+    setCreatingShipment(true);
+    setActionError(null);
+    try {
+      const updated = await api.post<Transaction>(`/transactions/${detail.id}/shipment`);
+      setDetail(updated);
+      setResiInput(updated.trackingNumber ?? '');
+      await load();
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Gagal membuat resi otomatis');
+    } finally {
+      setCreatingShipment(false);
     }
   };
 
@@ -314,13 +345,50 @@ export default function Transactions() {
 
                 {!detail.shippingCourier && (
                   <div className="bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-md px-3 py-2">
-                    Pesanan ini belum punya data kurir, jadi resi tidak bisa dilacak otomatis.
+                    Pesanan ini belum punya data kurir, jadi resi tidak bisa dibuat / dilacak otomatis.
+                  </div>
+                )}
+
+                {/* Auto resi via Komship (one click), when configured */}
+                {komshipEnabled && !detail.trackingNumber && detail.shippingCourier && (
+                  <div>
+                    <button
+                      onClick={createShipment}
+                      disabled={creatingShipment}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white text-xs font-bold rounded-lg"
+                    >
+                      {creatingShipment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Truck className="w-3.5 h-3.5" />}
+                      Buat Resi Otomatis (Komship)
+                    </button>
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Membuat order Komship, menjadwalkan penjemputan kurir, dan menerbitkan resi otomatis.
+                    </p>
+                  </div>
+                )}
+
+                {detail.shipmentOrderNo && (
+                  <div className="text-[11px] text-slate-500">
+                    No. Order Komship: <span className="font-mono text-slate-700">{detail.shipmentOrderNo}</span>
+                    {detail.labelUrl && (
+                      <>
+                        {' · '}
+                        <a
+                          href={detail.labelUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-rose-600 font-semibold hover:underline"
+                        >
+                          Lihat label / live tracking
+                        </a>
+                      </>
+                    )}
                   </div>
                 )}
 
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-600 mb-1">
                     Nomor Resi {detail.shippingCourier ? `(${detail.shippingCourier.toUpperCase()})` : ''}
+                    {komshipEnabled && <span className="text-slate-400 font-normal"> — atau input manual</span>}
                   </label>
                   <div className="flex gap-2">
                     <input
