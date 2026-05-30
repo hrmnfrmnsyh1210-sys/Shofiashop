@@ -70,6 +70,9 @@ model Tenant {
   address      String?  @db.Text
   logoUrl      String?  @db.LongText
   bankInfo     String?  @db.Text
+  // shipping origin (RajaOngkir city id + name snapshot) for online-order ongkir
+  originCityId   String?
+  originCityName String?
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -154,6 +157,8 @@ model Product {
   stock       Int      @default(0)
   minStock    Int      @default(0)
   unit        String   @default("pcs")
+  // shipping weight in grams; used to calculate ongkir for online orders
+  weight      Int      @default(1000)
   isActive    Boolean  @default(true)
   showOnline  Boolean  @default(true)
   categoryId  String?
@@ -212,6 +217,12 @@ model Transaction {
   customerPhone   String?
   shippingAddress String?  @db.Text
   onlineStatus    OnlineOrderStatus?
+
+  // online-order shipping/courier details (RajaOngkir)
+  shippingCourier String? // courier code/name, e.g. "jne"
+  shippingService String? // service code, e.g. "REG"
+  shippingEtd     String? // estimated delivery, e.g. "2-3"
+  destinationCity String? // destination city name snapshot
 
   subtotal      Decimal @db.Decimal(14, 2)
   discount      Decimal @db.Decimal(14, 2) @default(0)

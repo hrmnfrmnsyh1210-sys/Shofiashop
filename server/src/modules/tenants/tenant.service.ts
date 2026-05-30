@@ -74,6 +74,8 @@ export const tenantService = {
           customDomain: input.customDomain ?? null,
           logoUrl: input.logoUrl ?? null,
           bankInfo: input.bankInfo ?? null,
+          originCityId: input.originCityId ?? null,
+          originCityName: input.originCityName ?? null,
           isActive: input.isActive,
         },
       });
@@ -116,6 +118,10 @@ export const tenantService = {
         ...(input.customDomain !== undefined ? { customDomain: input.customDomain } : {}),
         ...(input.logoUrl !== undefined ? { logoUrl: input.logoUrl } : {}),
         ...(input.bankInfo !== undefined ? { bankInfo: input.bankInfo } : {}),
+        ...(input.originCityId !== undefined ? { originCityId: input.originCityId } : {}),
+        ...(input.originCityName !== undefined
+          ? { originCityName: input.originCityName }
+          : {}),
         ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
       },
     });
@@ -146,6 +152,10 @@ export const tenantService = {
         ...(input.address !== undefined ? { address: input.address } : {}),
         ...(input.logoUrl !== undefined ? { logoUrl: input.logoUrl } : {}),
         ...(input.bankInfo !== undefined ? { bankInfo: input.bankInfo } : {}),
+        ...(input.originCityId !== undefined ? { originCityId: input.originCityId } : {}),
+        ...(input.originCityName !== undefined
+          ? { originCityName: input.originCityName }
+          : {}),
       },
     });
   },

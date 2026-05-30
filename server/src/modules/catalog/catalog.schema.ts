@@ -22,6 +22,11 @@ export const CheckoutSchema = z.object({
     .default('TRANSFER'),
   notes: z.string().max(1000).optional().nullable(),
   shippingFee: z.number().nonnegative().default(0),
+  // selected courier (from RajaOngkir quote); snapshots stored on the order
+  shippingCourier: z.string().max(120).optional().nullable(),
+  shippingService: z.string().max(120).optional().nullable(),
+  shippingEtd: z.string().max(60).optional().nullable(),
+  destinationCity: z.string().max(120).optional().nullable(),
   items: z.array(CheckoutItemSchema).min(1),
 });
 

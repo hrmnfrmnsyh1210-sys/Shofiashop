@@ -7,6 +7,7 @@ import transactionRoutes from './modules/transactions/transaction.routes.js';
 import stockRoutes from './modules/stock/stock.routes.js';
 import reportRoutes from './modules/reports/report.routes.js';
 import catalogRoutes from './modules/catalog/catalog.routes.js';
+import shippingRoutes from './modules/shipping/shipping.routes.js';
 import activityRoutes from './modules/activity/activity.routes.js';
 import userRoutes from './modules/users/user.routes.js';
 import superRoutes from './modules/super/super.routes.js';
@@ -37,6 +38,9 @@ router.use('/admin/tenant', tenantAdminRoutes);
 router.use('/super/activity', activityRoutes);
 router.use('/super/users', userRoutes);
 router.use('/super', superRoutes);
+
+// Shipping reference data (provinces/cities) — public, used by storefront & admin.
+router.use('/shipping', shippingRoutes);
 
 // Public, customer-facing per-tenant storefront: /stores/:slug/...
 router.use('/stores', catalogRoutes);

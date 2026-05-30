@@ -30,6 +30,8 @@ export const CreateTenantSchema = z.object({
   customDomain: customDomainSchema.optional().nullable(),
   logoUrl: LogoUrlSchema.optional().nullable(),
   bankInfo: z.string().max(1000).optional().nullable(),
+  originCityId: z.string().max(20).optional().nullable(),
+  originCityName: z.string().max(120).optional().nullable(),
   isActive: z.boolean().default(true),
   // optional bootstrap admin for the new tenant
   adminName: z.string().min(2).max(120).optional(),
@@ -62,6 +64,8 @@ export const UpdateOwnTenantSchema = z.object({
   address: z.string().max(500).optional().nullable(),
   logoUrl: LogoUrlSchema.optional().nullable(),
   bankInfo: z.string().max(1000).optional().nullable(),
+  originCityId: z.string().max(20).optional().nullable(),
+  originCityName: z.string().max(120).optional().nullable(),
 });
 
 export type CreateTenantInput = z.infer<typeof CreateTenantSchema>;

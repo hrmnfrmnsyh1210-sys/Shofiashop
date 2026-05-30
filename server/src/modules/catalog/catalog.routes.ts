@@ -7,6 +7,7 @@ import {
   CheckoutSchema,
   ListCatalogQuerySchema,
 } from './catalog.schema.js';
+import { ShippingCostSchema } from '../shipping/shipping.schema.js';
 import { catalogService } from './catalog.service.js';
 
 // Public — no auth. Mounted at /stores
@@ -64,6 +65,19 @@ router.get(
   asyncHandler(async (req, res) => {
     res.json(
       await catalogService.listCategories((req as { tenantId: string }).tenantId),
+    );
+  }),
+);
+
+router.post(
+  '/:slug/shipping/cost',
+  validate(ShippingCostSchema),
+  asyncHandler(async (req, res) => {
+    res.json(
+      await catalogService.shippingCost(
+        (req as { tenantId: string }).tenantId,
+        req.body,
+      ),
     );
   }),
 );

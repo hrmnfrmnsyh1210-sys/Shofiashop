@@ -1,7 +1,9 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
-import { notFound } from '../../lib/httpError.js';
+import { badRequest, notFound } from '../../lib/httpError.js';
 import { transactionService } from '../transactions/transaction.service.js';
+import { shippingService } from '../shipping/shipping.service.js';
+import type { ShippingCostInput } from '../shipping/shipping.schema.js';
 import type { CheckoutInput, ListCatalogQuery } from './catalog.schema.js';
 
 const orderByFor = (sort: ListCatalogQuery['sort']): Prisma.ProductOrderByWithRelationInput => {
@@ -127,6 +129,38 @@ export const catalogService = {
     });
   },
 
+  // Quote shipping options for a cart against this store's origin city.
+  shippingCost: async (tenantId: string, input: ShippingCostInput) => {
+    const tenant = await prisma.tenant.findFirst({
+      where: { id: tenantId },
+      select: { originCityId: true },
+    });
+    if (!tenant?.originCityId) {
+      throw badRequest('Toko belum mengatur kota asal pengiriman.');
+    }
+
+    const productIds = input.items.map((i) => i.productId);
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds }, tenantId },
+      select: { id: true, weight: true },
+    });
+    const weightMap = new Map(products.map((p) => [p.id, p.weight]));
+    if (weightMap.size !== productIds.length) {
+      throw badRequest('Satu atau lebih produk tidak ditemukan.');
+    }
+
+    const totalWeight = input.items.reduce(
+      (sum, i) => sum + (weightMap.get(i.productId) ?? 0) * i.quantity,
+      0,
+    );
+
+    return shippingService.calculateCost({
+      originCityId: tenant.originCityId,
+      destinationCityId: input.destinationCityId,
+      weight: totalWeight,
+    });
+  },
+
   checkout: async (tenantId: string, input: CheckoutInput) => {
     return transactionService.create(tenantId, {
       channel: 'ONLINE',
@@ -138,6 +172,10 @@ export const catalogService = {
       discount: 0,
       tax: 0,
       shippingFee: input.shippingFee,
+      shippingCourier: input.shippingCourier ?? null,
+      shippingService: input.shippingService ?? null,
+      shippingEtd: input.shippingEtd ?? null,
+      destinationCity: input.destinationCity ?? null,
       paymentAmount: 0,
       notes: input.notes ?? null,
       items: input.items.map((i) => ({

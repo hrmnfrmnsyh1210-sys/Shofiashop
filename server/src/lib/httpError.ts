@@ -18,3 +18,5 @@ export const conflict = (msg = 'Conflict', details?: unknown) =>
   new HttpError(409, msg, details);
 export const unprocessable = (msg = 'Unprocessable', details?: unknown) =>
   new HttpError(422, msg, details);
+export const serviceUnavailable = (msg = 'Service unavailable', details?: unknown) =>
+  new HttpError(503, msg, details);

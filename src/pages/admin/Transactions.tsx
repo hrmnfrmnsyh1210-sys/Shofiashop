@@ -198,6 +198,17 @@ export default function Transactions() {
                   <Info label="HP" value={detail.customerPhone ?? '-'} />
                   <Info label="Alamat" value={detail.shippingAddress ?? '-'} />
                   <Info label="Online Status" value={detail.onlineStatus ?? '-'} />
+                  {detail.shippingCourier && (
+                    <Info
+                      label="Ekspedisi"
+                      value={`${detail.shippingCourier}${
+                        detail.shippingService ? ` - ${detail.shippingService}` : ''
+                      }${detail.shippingEtd ? ` (${detail.shippingEtd} hari)` : ''}`}
+                    />
+                  )}
+                  {detail.destinationCity && (
+                    <Info label="Kota Tujuan" value={detail.destinationCity} />
+                  )}
                 </>
               )}
             </div>

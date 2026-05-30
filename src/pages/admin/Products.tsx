@@ -20,6 +20,7 @@ type FormState = {
   stock: string;
   minStock: string;
   unit: string;
+  weight: string;
   categoryId: string;
   description: string;
   imageUrl: string;
@@ -36,6 +37,7 @@ const emptyForm: FormState = {
   stock: '0',
   minStock: '0',
   unit: 'pcs',
+  weight: '1000',
   categoryId: '',
   description: '',
   imageUrl: '',
@@ -118,6 +120,7 @@ export default function Products() {
       stock: String(p.stock),
       minStock: String(p.minStock),
       unit: p.unit,
+      weight: String(p.weight ?? 1000),
       categoryId: p.categoryId ?? '',
       description: p.description ?? '',
       imageUrl: p.imageUrl ?? '',
@@ -142,6 +145,7 @@ export default function Products() {
         stock: Number(form.stock) || 0,
         minStock: Number(form.minStock) || 0,
         unit: form.unit.trim() || 'pcs',
+        weight: Math.max(1, Number(form.weight) || 1000),
         categoryId: form.categoryId || null,
         description: form.description.trim() || null,
         imageUrl: form.imageUrl.trim() || null,
@@ -354,7 +358,13 @@ export default function Products() {
                 <Field label="Stok Minimum">
                   <input type="number" min="0" value={form.minStock} onChange={(e) => setForm({ ...form, minStock: e.target.value })} className={inputCls} />
                 </Field>
+                <Field label="Berat (gram)">
+                  <input type="number" min="1" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} className={inputCls} placeholder="1000" />
+                </Field>
               </div>
+              <p className="mt-2 text-[11px] text-slate-400">
+                Berat dipakai untuk menghitung ongkir otomatis pada pesanan online.
+              </p>
             </Section>
 
             <Section title="Gambar & Deskripsi" icon={<ImageIcon className="w-3.5 h-3.5" />}>

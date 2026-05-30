@@ -20,6 +20,8 @@ export const CreateProductSchema = z.object({
   stock: z.number().int().nonnegative().default(0),
   minStock: z.number().int().nonnegative().default(0),
   unit: z.string().max(16).default('pcs'),
+  // shipping weight in grams (used for online-order ongkir)
+  weight: z.number().int().positive().max(500_000).default(1000),
   isActive: z.boolean().default(true),
   showOnline: z.boolean().default(true),
   categoryId: z.string().optional().nullable(),

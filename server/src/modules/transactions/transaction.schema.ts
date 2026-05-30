@@ -17,6 +17,10 @@ export const CreateTransactionSchema = z.object({
   customerName: z.string().max(120).optional().nullable(),
   customerPhone: z.string().max(32).optional().nullable(),
   shippingAddress: z.string().max(500).optional().nullable(),
+  shippingCourier: z.string().max(120).optional().nullable(),
+  shippingService: z.string().max(120).optional().nullable(),
+  shippingEtd: z.string().max(60).optional().nullable(),
+  destinationCity: z.string().max(120).optional().nullable(),
   discount: z.number().nonnegative().default(0), // header-level discount
   tax: z.number().nonnegative().default(0),
   shippingFee: z.number().nonnegative().default(0),

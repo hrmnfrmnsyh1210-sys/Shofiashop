@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
-import { AlertCircle, CheckCircle2, Image as ImageIcon, Loader2, Upload, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Image as ImageIcon, Loader2, Truck, Upload, X } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { PageHeader } from '../../components/PageHeader';
 import { fileToDataUrl, MAX_IMAGE_BYTES } from '../../lib/imageUpload';
-import type { Tenant } from '../../lib/types';
+import type { ShippingCity, ShippingProvince, Tenant } from '../../lib/types';
 
 type Form = {
   name: string;
@@ -14,6 +14,8 @@ type Form = {
   address: string;
   bankInfo: string;
   logoUrl: string;
+  originCityId: string;
+  originCityName: string;
 };
 
 const emptyForm: Form = {
@@ -24,6 +26,8 @@ const emptyForm: Form = {
   address: '',
   bankInfo: '',
   logoUrl: '',
+  originCityId: '',
+  originCityName: '',
 };
 
 export default function Settings() {
@@ -37,6 +41,13 @@ export default function Settings() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // shipping origin picker
+  const [shippingEnabled, setShippingEnabled] = useState(false);
+  const [provinces, setProvinces] = useState<ShippingProvince[]>([]);
+  const [provinceId, setProvinceId] = useState('');
+  const [cities, setCities] = useState<ShippingCity[]>([]);
+  const [loadingCities, setLoadingCities] = useState(false);
 
   const shopUrl =
     typeof window !== 'undefined' && tenant
@@ -59,6 +70,8 @@ export default function Settings() {
           address: t.address ?? '',
           bankInfo: t.bankInfo ?? '',
           logoUrl: t.logoUrl ?? '',
+          originCityId: t.originCityId ?? '',
+          originCityName: t.originCityName ?? '',
         });
       })
       .catch((err) => {
@@ -69,6 +82,43 @@ export default function Settings() {
       cancelled = true;
     };
   }, []);
+
+  // Load shipping availability + provinces for the origin picker.
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{ enabled: boolean }>('/shipping/enabled')
+      .then((r) => {
+        if (cancelled || !r.enabled) return;
+        setShippingEnabled(true);
+        api
+          .get<ShippingProvince[]>('/shipping/provinces')
+          .then((p) => !cancelled && setProvinces(p))
+          .catch(() => !cancelled && setProvinces([]));
+      })
+      .catch(() => !cancelled && setShippingEnabled(false));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Load cities when a province is chosen in the origin picker.
+  useEffect(() => {
+    if (!provinceId) {
+      setCities([]);
+      return;
+    }
+    let cancelled = false;
+    setLoadingCities(true);
+    api
+      .get<ShippingCity[]>('/shipping/cities', { query: { provinceId } })
+      .then((c) => !cancelled && setCities(c))
+      .catch(() => !cancelled && setCities([]))
+      .finally(() => !cancelled && setLoadingCities(false));
+    return () => {
+      cancelled = true;
+    };
+  }, [provinceId]);
 
   const onPickLogo = async (file: File | null) => {
     if (!file) return;
@@ -95,6 +145,8 @@ export default function Settings() {
         address: form.address.trim() || null,
         bankInfo: form.bankInfo.trim() || null,
         logoUrl: form.logoUrl || null,
+        originCityId: form.originCityId || null,
+        originCityName: form.originCityName || null,
       };
       const updated = await api.patch<Tenant>('/admin/tenant', payload);
       setTenant(updated);
@@ -257,6 +309,67 @@ export default function Settings() {
               placeholder="BCA 1234567890 a/n Toko Saya"
             />
           </Field>
+
+          {/* Pengiriman: kota asal untuk hitung ongkir otomatis */}
+          <div className="pt-2 border-t border-slate-100">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500 mb-3">
+              <Truck className="w-4 h-4 text-rose-500" /> Pengiriman (Ongkir Online)
+            </div>
+
+            {!shippingEnabled ? (
+              <div className="bg-amber-50 border border-amber-200 text-amber-700 text-xs rounded-lg px-3 py-2">
+                Fitur ongkir otomatis belum aktif. Atur <span className="font-mono">RAJAONGKIR_API_KEY</span> di server untuk mengaktifkannya.
+              </div>
+            ) : (
+              <>
+                <div className="mb-3 text-xs text-slate-500">
+                  Kota asal saat ini:{' '}
+                  <span className="font-semibold text-slate-800">
+                    {form.originCityName || 'Belum diatur'}
+                  </span>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <Field label="Provinsi Asal">
+                    <select
+                      value={provinceId}
+                      onChange={(e) => setProvinceId(e.target.value)}
+                      className={inputCls}
+                    >
+                      <option value="">— Pilih provinsi —</option>
+                      {provinces.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="Kota / Kabupaten Asal">
+                    <select
+                      value={form.originCityId}
+                      onChange={(e) => {
+                        const city = cities.find((c) => c.id === e.target.value);
+                        setForm({
+                          ...form,
+                          originCityId: e.target.value,
+                          originCityName: city?.name ?? '',
+                        });
+                      }}
+                      disabled={!provinceId || loadingCities}
+                      className={`${inputCls} disabled:bg-slate-50 disabled:text-slate-400`}
+                    >
+                      <option value="">
+                        {loadingCities ? 'Memuat kota...' : '— Pilih kota —'}
+                      </option>
+                      {cities.map((c) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+                <p className="mt-2 text-[11px] text-slate-400">
+                  Ongkir pesanan online dihitung dari kota asal ini ke kota tujuan pembeli.
+                </p>
+              </>
+            )}
+          </div>
         </fieldset>
 
         {canEdit && (

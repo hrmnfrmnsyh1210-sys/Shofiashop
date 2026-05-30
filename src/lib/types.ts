@@ -11,6 +11,8 @@ export interface Tenant {
   address: string | null;
   logoUrl: string | null;
   bankInfo: string | null;
+  originCityId: string | null;
+  originCityName: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -85,6 +87,7 @@ export interface Product {
   stock: number;
   minStock: number;
   unit: string;
+  weight: number;
   isActive: boolean;
   showOnline: boolean;
   categoryId: string | null;
@@ -130,6 +133,10 @@ export interface Transaction {
   customerName: string | null;
   customerPhone: string | null;
   shippingAddress: string | null;
+  shippingCourier: string | null;
+  shippingService: string | null;
+  shippingEtd: string | null;
+  destinationCity: string | null;
   onlineStatus: OnlineOrderStatus | null;
   subtotal: string;
   discount: string;
@@ -185,6 +192,28 @@ export interface CatalogCategory {
   id: string;
   name: string;
   slug: string;
+}
+
+export interface ShippingProvince {
+  id: string;
+  name: string;
+}
+
+export interface ShippingCity {
+  id: string;
+  provinceId: string;
+  province: string;
+  name: string;
+  postalCode: string;
+}
+
+export interface ShippingOption {
+  courier: string;
+  courierName: string;
+  service: string;
+  description: string;
+  cost: number;
+  etd: string;
 }
 
 export interface CheckoutResponse {

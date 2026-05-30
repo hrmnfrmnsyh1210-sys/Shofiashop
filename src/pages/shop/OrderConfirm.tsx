@@ -8,9 +8,14 @@ import type { CheckoutResponse } from '../../lib/types';
 export default function OrderConfirm() {
   const { orderNumber: paramOrderNumber } = useParams<{ orderNumber: string }>();
   const location = useLocation();
-  const stateData = (location.state ?? null) as { order?: CheckoutResponse; total?: number } | null;
+  const stateData = (location.state ?? null) as {
+    order?: CheckoutResponse;
+    total?: number;
+    shipping?: { label: string; etd: string; cost: number; city: string | null } | null;
+  } | null;
   const order = stateData?.order;
   const total = stateData?.total;
+  const shipping = stateData?.shipping ?? null;
   const orderNumber = order?.orderNumber ?? paramOrderNumber ?? '';
   const { store, path } = useStore();
 
@@ -75,6 +80,22 @@ export default function OrderConfirm() {
               <div>
                 <div className="text-slate-500 font-semibold uppercase tracking-wider">Pengiriman</div>
                 <div className="text-slate-900 font-semibold">{order.onlineStatus ?? '-'}</div>
+              </div>
+            </div>
+          )}
+
+          {shipping && (
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+                Ekspedisi
+              </div>
+              <div className="text-sm text-slate-900 font-semibold">
+                {shipping.label}
+                {shipping.city ? ` → ${shipping.city}` : ''}
+              </div>
+              <div className="text-xs text-slate-500">
+                {rupiah(shipping.cost)}
+                {shipping.etd ? ` • estimasi ${shipping.etd} hari` : ''}
               </div>
             </div>
           )}
