@@ -167,6 +167,8 @@ export default function Checkout() {
         state: {
           order: res,
           total,
+          phone: customerPhone.trim(),
+          paymentMethod,
           shipping: selectedOption
             ? {
                 label: `${selectedOption.courier.toUpperCase()} ${selectedOption.service}`,
@@ -323,7 +325,8 @@ export default function Checkout() {
               ))}
             </div>
             <p className="text-xs text-slate-400 mt-3">
-              Setelah pesanan masuk, admin akan mengirim instruksi pembayaran via WhatsApp.
+              Setelah pesanan dibuat, lakukan pembayaran lalu unggah bukti pembayaran di
+              halaman pesanan agar admin dapat mengonfirmasi.
             </p>
           </section>
 

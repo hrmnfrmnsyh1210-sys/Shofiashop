@@ -37,6 +37,21 @@ export const OrderLookupQuerySchema = z.object({
   phone: z.string().min(4).max(32),
 });
 
+// Buyer submits a payment proof image (base64 data URL) for their own order.
+// Phone is the same lightweight ownership check used for lookup/tracking.
+export const SubmitPaymentProofSchema = z.object({
+  phone: z.string().min(4).max(32),
+  // base64-encoded image data URL (e.g. "data:image/jpeg;base64,...")
+  image: z
+    .string()
+    .min(1)
+    .max(3_000_000)
+    .refine((v) => v.startsWith('data:image/'), {
+      message: 'Bukti pembayaran harus berupa gambar.',
+    }),
+});
+
 export type ListCatalogQuery = z.infer<typeof ListCatalogQuerySchema>;
 export type CheckoutInput = z.infer<typeof CheckoutSchema>;
 export type OrderLookupQuery = z.infer<typeof OrderLookupQuerySchema>;
+export type SubmitPaymentProofInput = z.infer<typeof SubmitPaymentProofSchema>;

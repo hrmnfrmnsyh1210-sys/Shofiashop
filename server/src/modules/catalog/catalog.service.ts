@@ -4,7 +4,11 @@ import { badRequest, notFound } from '../../lib/httpError.js';
 import { transactionService } from '../transactions/transaction.service.js';
 import { shippingService } from '../shipping/shipping.service.js';
 import type { ShippingCostInput } from '../shipping/shipping.schema.js';
-import type { CheckoutInput, ListCatalogQuery } from './catalog.schema.js';
+import type {
+  CheckoutInput,
+  ListCatalogQuery,
+  SubmitPaymentProofInput,
+} from './catalog.schema.js';
 
 const normalizePhone = (p: string) => p.replace(/\D/g, '');
 
@@ -193,6 +197,7 @@ export const catalogService = {
       orderNumber: trx.transactionNumber,
       status: trx.status,
       onlineStatus: trx.onlineStatus,
+      paymentMethod: trx.paymentMethod,
       createdAt: trx.createdAt,
       shippedAt: trx.shippedAt,
       customerName: trx.customerName,
@@ -206,8 +211,37 @@ export const catalogService = {
       destinationCity: trx.destinationCity,
       trackingNumber: trx.trackingNumber,
       hasTracking: Boolean(trx.trackingNumber && trx.shippingCourier),
+      paymentProofUrl: trx.paymentProofUrl,
+      paymentProofAt: trx.paymentProofAt,
+      paymentConfirmedAt: trx.paymentConfirmedAt,
       items: trx.items,
     };
+  },
+
+  // Buyer uploads / replaces the payment proof for their own (unpaid) order.
+  // Returns the refreshed public order status.
+  submitPaymentProof: async (
+    tenantId: string,
+    orderNumber: string,
+    input: SubmitPaymentProofInput,
+  ) => {
+    const trx = await catalogService.findCustomerOrder(tenantId, orderNumber, input.phone);
+    if (trx.status === 'VOIDED' || trx.status === 'REFUNDED') {
+      throw badRequest('Pesanan ini sudah tidak aktif.');
+    }
+    if (trx.status === 'PAID') {
+      throw badRequest('Pembayaran pesanan ini sudah dikonfirmasi.');
+    }
+    await prisma.transaction.update({
+      where: { id: trx.id },
+      data: {
+        paymentProofUrl: input.image,
+        paymentProofAt: new Date(),
+        // a fresh proof resets any prior confirmation timestamp
+        paymentConfirmedAt: null,
+      },
+    });
+    return catalogService.getOrderStatus(tenantId, orderNumber, input.phone);
   },
 
   // Live courier tracking for the buyer's own order.

@@ -5,6 +5,7 @@ import { generateTransactionNumber } from '../../lib/transactionNumber.js';
 import { shippingService } from '../shipping/shipping.service.js';
 import { komshipService } from '../shipping/komship.service.js';
 import type {
+  ConfirmPaymentInput,
   CreateShipmentInput,
   CreateTransactionInput,
   ListTransactionQuery,
@@ -283,6 +284,46 @@ export const transactionService = {
         ...(input.onlineStatus === 'SHIPPED' && !trx.shippedAt
           ? { shippedAt: new Date() }
           : {}),
+      },
+      include: { items: true },
+    });
+  },
+
+  // Admin confirms or rejects an online order's payment after reviewing the
+  // buyer's uploaded proof. CONFIRM marks it PAID (and nudges NEW → CONFIRMED);
+  // REJECT keeps it PENDING and clears the proof so the buyer can re-upload.
+  confirmPayment: async (tenantId: string, id: string, input: ConfirmPaymentInput) => {
+    const trx = await transactionService.get(tenantId, id);
+    if (trx.channel !== 'ONLINE') {
+      throw badRequest('Hanya pesanan online yang dikonfirmasi pembayarannya di sini.');
+    }
+    if (trx.status === 'VOIDED' || trx.status === 'REFUNDED') {
+      throw badRequest('Pesanan ini sudah tidak aktif.');
+    }
+
+    if (input.action === 'CONFIRM') {
+      return prisma.transaction.update({
+        where: { id },
+        data: {
+          status: 'PAID',
+          paymentAmount: trx.total,
+          changeAmount: D(0),
+          paymentConfirmedAt: new Date(),
+          // move the order forward once payment is verified
+          ...(trx.onlineStatus === 'NEW' ? { onlineStatus: 'CONFIRMED' } : {}),
+        },
+        include: { items: true },
+      });
+    }
+
+    // REJECT: payment not received — keep it pending and clear the proof.
+    return prisma.transaction.update({
+      where: { id },
+      data: {
+        status: 'PENDING',
+        paymentProofUrl: null,
+        paymentProofAt: null,
+        paymentConfirmedAt: null,
       },
       include: { items: true },
     });

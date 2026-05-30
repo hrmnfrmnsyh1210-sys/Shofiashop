@@ -149,6 +149,9 @@ export interface Transaction {
   shipmentOrderNo: string | null;
   labelUrl: string | null;
   shippedAt: string | null;
+  paymentProofUrl: string | null;
+  paymentProofAt: string | null;
+  paymentConfirmedAt: string | null;
   onlineStatus: OnlineOrderStatus | null;
   subtotal: string;
   discount: string;
@@ -260,6 +263,7 @@ export interface CustomerOrderStatus {
   orderNumber: string;
   status: TransactionStatus;
   onlineStatus: OnlineOrderStatus | null;
+  paymentMethod: PaymentMethod;
   createdAt: string;
   shippedAt: string | null;
   customerName: string | null;
@@ -273,6 +277,9 @@ export interface CustomerOrderStatus {
   destinationCity: string | null;
   trackingNumber: string | null;
   hasTracking: boolean;
+  paymentProofUrl: string | null;
+  paymentProofAt: string | null;
+  paymentConfirmedAt: string | null;
   items: CustomerOrderItem[];
 }
 

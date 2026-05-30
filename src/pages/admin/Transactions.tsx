@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Eye, Ban, Loader2, X, Truck, MapPin, Save } from 'lucide-react';
+import { Eye, Ban, Loader2, X, Truck, MapPin, Save, CheckCircle2, Clock } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { PageHeader } from '../../components/PageHeader';
@@ -176,6 +176,30 @@ export default function Transactions() {
     }
   };
 
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const confirmPayment = async (action: 'CONFIRM' | 'REJECT') => {
+    if (!detail) return;
+    if (
+      action === 'REJECT' &&
+      !confirm('Tolak bukti pembayaran ini? Pelanggan perlu mengunggah ulang buktinya.')
+    )
+      return;
+    setConfirmingPayment(true);
+    setActionError(null);
+    try {
+      const updated = await api.patch<Transaction>(
+        `/transactions/${detail.id}/payment`,
+        { action },
+      );
+      setDetail(updated);
+      await load();
+    } catch (err) {
+      setActionError(err instanceof ApiError ? err.message : 'Gagal memproses pembayaran');
+    } finally {
+      setConfirmingPayment(false);
+    }
+  };
+
   const updateOnlineStatus = async (next: OnlineOrderStatus) => {
     if (!detail) return;
     setActionError(null);
@@ -336,6 +360,68 @@ export default function Transactions() {
               <Row label="Dibayar" value={rupiah(detail.paymentAmount)} />
               <Row label="Kembalian" value={rupiah(detail.changeAmount)} />
             </div>
+
+            {detail.channel === 'ONLINE' && detail.paymentMethod !== 'CASH' && (
+              <div className="rounded-lg border border-slate-200 p-3 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-slate-500">
+                    <CheckCircle2 className="w-4 h-4 text-rose-500" /> Konfirmasi Pembayaran
+                  </div>
+                  {detail.status === 'PAID' ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Terkonfirmasi
+                    </span>
+                  ) : detail.status === 'PENDING' ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-700">
+                      <Clock className="w-3.5 h-3.5" /> Belum dibayar
+                    </span>
+                  ) : null}
+                </div>
+
+                {detail.paymentProofUrl ? (
+                  <a href={detail.paymentProofUrl} target="_blank" rel="noreferrer" className="inline-block">
+                    <img
+                      src={detail.paymentProofUrl}
+                      alt="Bukti pembayaran"
+                      className="h-32 w-32 rounded-lg border border-slate-200 object-cover hover:opacity-90"
+                    />
+                    <span className="mt-1 block text-[11px] text-rose-600 font-semibold">Lihat ukuran penuh</span>
+                  </a>
+                ) : (
+                  <p className="text-[11px] text-slate-400">
+                    Pelanggan belum mengunggah bukti pembayaran.
+                  </p>
+                )}
+
+                {detail.paymentConfirmedAt && (
+                  <p className="text-[11px] text-emerald-600">
+                    Dikonfirmasi {formatDateTime(detail.paymentConfirmedAt)}.
+                  </p>
+                )}
+
+                {canVoid && detail.status === 'PENDING' && (
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => confirmPayment('CONFIRM')}
+                      disabled={confirmingPayment}
+                      className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white text-xs font-bold rounded-lg"
+                    >
+                      {confirmingPayment ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                      Konfirmasi Pembayaran Masuk
+                    </button>
+                    {detail.paymentProofUrl && (
+                      <button
+                        onClick={() => confirmPayment('REJECT')}
+                        disabled={confirmingPayment}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 hover:bg-rose-100 disabled:opacity-60 text-rose-700 text-xs font-bold rounded-lg"
+                      >
+                        <X className="w-3.5 h-3.5" /> Tolak Bukti
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
             {detail.channel === 'ONLINE' && (
               <div className="rounded-lg border border-slate-200 p-3 space-y-3">

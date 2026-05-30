@@ -238,6 +238,11 @@ model Transaction {
   labelUrl        String? @db.Text // Komship live tracking / label URL
   shippedAt       DateTime? // when the order was marked SHIPPED
 
+  // online payment confirmation (buyer uploads proof, admin verifies on the web)
+  paymentProofUrl    String?   @db.LongText // base64 data URL of the buyer's payment proof
+  paymentProofAt     DateTime? // when the buyer submitted the proof
+  paymentConfirmedAt DateTime? // when an admin confirmed the payment as received
+
   subtotal      Decimal @db.Decimal(14, 2)
   discount      Decimal @db.Decimal(14, 2) @default(0)
   tax           Decimal @db.Decimal(14, 2) @default(0)

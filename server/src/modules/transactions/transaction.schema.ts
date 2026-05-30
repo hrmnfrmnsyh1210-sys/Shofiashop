@@ -65,6 +65,13 @@ export const UpdateTrackingSchema = z.object({
   shippingService: z.string().max(120).optional().nullable(),
 });
 
+// Admin verifies an online order's payment after reviewing the uploaded proof.
+// CONFIRM marks the order PAID; REJECT keeps it PENDING and clears the proof so
+// the buyer can re-upload.
+export const ConfirmPaymentSchema = z.object({
+  action: z.enum(['CONFIRM', 'REJECT']),
+});
+
 // Create an automatic shipment (Komship) and generate the resi. All fields are
 // optional; pickup date defaults to today and time/vehicle fall back to env.
 export const CreateShipmentSchema = z.object({
@@ -84,3 +91,4 @@ export type ListTransactionQuery = z.infer<typeof ListTransactionQuerySchema>;
 export type UpdateOnlineStatusInput = z.infer<typeof UpdateOnlineStatusSchema>;
 export type UpdateTrackingInput = z.infer<typeof UpdateTrackingSchema>;
 export type CreateShipmentInput = z.infer<typeof CreateShipmentSchema>;
+export type ConfirmPaymentInput = z.infer<typeof ConfirmPaymentSchema>;

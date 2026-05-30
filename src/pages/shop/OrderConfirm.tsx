@@ -1,9 +1,10 @@
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { CheckCircle2, MessageCircle, ArrowRight, Copy, PackageSearch } from 'lucide-react';
+import { CheckCircle2, ArrowRight, Copy, PackageSearch } from 'lucide-react';
 import { useState } from 'react';
 import { rupiah } from '../../lib/format';
 import { useStore } from '../../lib/store';
-import type { CheckoutResponse } from '../../lib/types';
+import { PaymentProofUpload } from '../../components/PaymentProofUpload';
+import type { CheckoutResponse, PaymentMethod } from '../../lib/types';
 
 export default function OrderConfirm() {
   const { orderNumber: paramOrderNumber } = useParams<{ orderNumber: string }>();
@@ -11,13 +12,17 @@ export default function OrderConfirm() {
   const stateData = (location.state ?? null) as {
     order?: CheckoutResponse;
     total?: number;
+    phone?: string;
+    paymentMethod?: PaymentMethod;
     shipping?: { label: string; etd: string; cost: number; city: string | null } | null;
   } | null;
   const order = stateData?.order;
   const total = stateData?.total;
+  const phone = stateData?.phone;
+  const paymentMethod = stateData?.paymentMethod ?? 'TRANSFER';
   const shipping = stateData?.shipping ?? null;
   const orderNumber = order?.orderNumber ?? paramOrderNumber ?? '';
-  const { store, path } = useStore();
+  const { store, slug, path } = useStore();
 
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -30,11 +35,6 @@ export default function OrderConfirm() {
     }
   };
 
-  const waMsg = encodeURIComponent(
-    `Halo ${store?.name ?? ''}, saya baru saja membuat pesanan dengan nomor *${orderNumber}*. Mohon konfirmasi & instruksi pembayarannya. Terima kasih!`,
-  );
-  const waNumber = store?.whatsapp?.replace(/\D/g, '');
-
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
       <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-10 text-center">
@@ -45,7 +45,8 @@ export default function OrderConfirm() {
           Pesanan Berhasil Dibuat!
         </h1>
         <p className="text-slate-500 mb-8">
-          Terima kasih sudah belanja di {store?.name ?? 'toko ini'}. Admin akan menghubungi Anda untuk konfirmasi pembayaran.
+          Terima kasih sudah belanja di {store?.name ?? 'toko ini'}. Selesaikan pembayaran lalu
+          unggah buktinya di bawah agar admin dapat mengonfirmasi pesanan Anda.
         </p>
 
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 mb-6 text-left">
@@ -110,17 +111,19 @@ export default function OrderConfirm() {
           )}
         </div>
 
+        {orderNumber && (
+          <div className="mb-6 text-left">
+            <PaymentProofUpload
+              slug={slug}
+              orderNumber={orderNumber}
+              phone={phone}
+              status={order?.status ?? 'PENDING'}
+              paymentMethod={paymentMethod}
+            />
+          </div>
+        )}
+
         <div className="space-y-2">
-          {waNumber && (
-            <a
-              href={`https://wa.me/${waNumber}?text=${waMsg}`}
-              target="_blank"
-              rel="noreferrer"
-              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
-            >
-              <MessageCircle className="w-4 h-4" /> Konfirmasi via WhatsApp
-            </a>
-          )}
           <Link
             to={`${path('lacak')}?order=${encodeURIComponent(orderNumber)}`}
             className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2"
@@ -136,7 +139,8 @@ export default function OrderConfirm() {
         </div>
 
         <p className="text-xs text-slate-400 mt-6">
-          Simpan nomor pesanan ini sebagai bukti. Anda juga bisa menanyakan status pesanan kapan saja via WhatsApp.
+          Simpan nomor pesanan ini sebagai bukti. Anda bisa memeriksa status pesanan & pembayaran
+          kapan saja di halaman Lacak Pesanan.
         </p>
       </div>
     </div>

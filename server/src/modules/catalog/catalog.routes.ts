@@ -7,6 +7,7 @@ import {
   CheckoutSchema,
   ListCatalogQuerySchema,
   OrderLookupQuerySchema,
+  SubmitPaymentProofSchema,
 } from './catalog.schema.js';
 import { ShippingCostSchema } from '../shipping/shipping.schema.js';
 import { catalogService } from './catalog.service.js';
@@ -106,6 +107,20 @@ router.get(
         (req as { tenantId: string }).tenantId,
         req.params.orderNumber,
         (req.query as { phone: string }).phone,
+      ),
+    );
+  }),
+);
+
+router.post(
+  '/:slug/orders/:orderNumber/payment-proof',
+  validate(SubmitPaymentProofSchema),
+  asyncHandler(async (req, res) => {
+    res.json(
+      await catalogService.submitPaymentProof(
+        (req as { tenantId: string }).tenantId,
+        req.params.orderNumber,
+        req.body,
       ),
     );
   }),

@@ -3,6 +3,7 @@ import { asyncHandler } from '../../lib/asyncHandler.js';
 import { validate } from '../../middleware/validate.js';
 import { requireAuth, requireRole, requireTenant } from '../../middleware/auth.js';
 import {
+  ConfirmPaymentSchema,
   CreateShipmentSchema,
   CreateTransactionSchema,
   ListTransactionQuerySchema,
@@ -51,6 +52,29 @@ router.post(
       entityType: 'Transaction',
       entityId: trx.id,
       summary: `Membatalkan (void) transaksi ${trx.transactionNumber}`,
+    });
+    res.json(trx);
+  }),
+);
+
+router.patch(
+  '/:id/payment',
+  requireRole('ADMIN', 'MANAGER'),
+  validate(ConfirmPaymentSchema),
+  asyncHandler(async (req, res) => {
+    const trx = await transactionService.confirmPayment(
+      req.tenantId!,
+      req.params.id,
+      req.body,
+    );
+    activityService.log(req, {
+      action: 'transaction.payment',
+      entityType: 'Transaction',
+      entityId: trx.id,
+      summary:
+        req.body.action === 'CONFIRM'
+          ? `Mengonfirmasi pembayaran pesanan ${trx.transactionNumber}`
+          : `Menolak bukti pembayaran pesanan ${trx.transactionNumber}`,
     });
     res.json(trx);
   }),

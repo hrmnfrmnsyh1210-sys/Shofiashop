@@ -5,6 +5,7 @@ import { api, ApiError } from '../../lib/api';
 import { useStore } from '../../lib/store';
 import { rupiah, formatDateTime } from '../../lib/format';
 import { TrackingTimeline } from '../../components/TrackingTimeline';
+import { PaymentProofUpload } from '../../components/PaymentProofUpload';
 import type {
   CustomerOrderStatus,
   OnlineOrderStatus,
@@ -190,6 +191,23 @@ export default function OrderTracking() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Payment confirmation */}
+          {!cancelled && (
+            <div className="border-t border-slate-100 pt-4">
+              <PaymentProofUpload
+                slug={slug}
+                orderNumber={order.orderNumber}
+                phone={phone.trim()}
+                status={order.status}
+                paymentMethod={order.paymentMethod}
+                paymentProofUrl={order.paymentProofUrl}
+                paymentProofAt={order.paymentProofAt}
+                paymentConfirmedAt={order.paymentConfirmedAt}
+                onUpdated={setOrder}
+              />
             </div>
           )}
 
