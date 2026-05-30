@@ -5,23 +5,23 @@ import { useAuth } from '../../lib/auth';
 import { PageHeader } from '../../components/PageHeader';
 import { Modal } from '../../components/Modal';
 import { formatDate } from '../../lib/format';
-import type { PaginatedResponse, StaffUser, UserRole } from '../../lib/types';
+import type { PaginatedResponse, StaffUser, Tenant, UserRole } from '../../lib/types';
 
 const PAGE_SIZE = 20;
-const ROLES: UserRole[] = ['ADMIN', 'MANAGER', 'CASHIER'];
+const ROLES: UserRole[] = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'CASHIER'];
 
 const ROLE_LABEL: Record<string, string> = {
+  SUPER_ADMIN: 'Super Admin',
   ADMIN: 'Admin',
   MANAGER: 'Manajer',
   CASHIER: 'Kasir',
-  SUPER_ADMIN: 'Super Admin',
 };
 
 const ROLE_BADGE: Record<string, string> = {
+  SUPER_ADMIN: 'bg-amber-50 text-amber-600',
   ADMIN: 'bg-rose-50 text-rose-600',
   MANAGER: 'bg-blue-50 text-blue-600',
   CASHIER: 'bg-slate-100 text-slate-600',
-  SUPER_ADMIN: 'bg-amber-50 text-amber-600',
 };
 
 type Form = {
@@ -29,16 +29,20 @@ type Form = {
   email: string;
   password: string;
   role: UserRole;
+  tenantId: string;
   isActive: boolean;
 };
 
-const emptyForm: Form = { name: '', email: '', password: '', role: 'CASHIER', isActive: true };
+const emptyForm: Form = { name: '', email: '', password: '', role: 'CASHIER', tenantId: '', isActive: true };
 
-export default function Staff() {
+export default function SuperUsers() {
   const { user: me } = useAuth();
   const [search, setSearch] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [tenantFilter, setTenantFilter] = useState('');
   const [page, setPage] = useState(1);
   const [data, setData] = useState<PaginatedResponse<StaffUser> | null>(null);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,12 +52,25 @@ export default function Staff() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  useEffect(() => {
+    api
+      .get<PaginatedResponse<Tenant>>('/super/tenants', { query: { page: 1, pageSize: 100 } })
+      .then((r) => setTenants(r.items))
+      .catch(() => setTenants([]));
+  }, []);
+
   const load = async () => {
     setLoading(true);
     setError(null);
     try {
-      const r = await api.get<PaginatedResponse<StaffUser>>('/admin/users', {
-        query: { search, page, pageSize: PAGE_SIZE },
+      const r = await api.get<PaginatedResponse<StaffUser>>('/super/users', {
+        query: {
+          search,
+          role: roleFilter || undefined,
+          tenantId: tenantFilter || undefined,
+          page,
+          pageSize: PAGE_SIZE,
+        },
       });
       setData(r);
     } catch (err) {
@@ -67,7 +84,7 @@ export default function Staff() {
     const t = setTimeout(load, 200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, page]);
+  }, [search, roleFilter, tenantFilter, page]);
 
   const openCreate = () => {
     setEditing(null);
@@ -77,32 +94,47 @@ export default function Staff() {
   };
   const openEdit = (u: StaffUser) => {
     setEditing(u);
-    setForm({ name: u.name, email: u.email, password: '', role: u.role, isActive: u.isActive });
+    setForm({
+      name: u.name,
+      email: u.email,
+      password: '',
+      role: u.role,
+      tenantId: u.tenantId ?? '',
+      isActive: u.isActive,
+    });
     setFormError(null);
     setModalOpen(true);
   };
 
   const isSelf = editing && me ? editing.id === me.id : false;
+  const needsTenant = form.role !== 'SUPER_ADMIN';
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (needsTenant && !form.tenantId) {
+      setFormError('Pilih toko untuk role ini.');
+      return;
+    }
     setSaving(true);
     setFormError(null);
     try {
+      const tenantId = needsTenant ? form.tenantId : null;
       if (editing) {
         const payload: Record<string, unknown> = {
           name: form.name.trim(),
           role: form.role,
           isActive: form.isActive,
+          tenantId,
         };
         if (form.password.trim()) payload.password = form.password.trim();
-        await api.patch(`/admin/users/${editing.id}`, payload);
+        await api.patch(`/super/users/${editing.id}`, payload);
       } else {
-        await api.post('/admin/users', {
+        await api.post('/super/users', {
           name: form.name.trim(),
           email: form.email.trim(),
           password: form.password,
           role: form.role,
+          tenantId,
         });
       }
       setModalOpen(false);
@@ -120,7 +152,7 @@ export default function Staff() {
     <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
       <PageHeader
         title="Pengguna & Staf"
-        description="Kelola akun admin, manajer, dan kasir toko Anda."
+        description="Kelola seluruh akun pengguna di semua toko platform."
         actions={
           <button onClick={openCreate} className="bg-rose-500 hover:bg-rose-600 text-white text-sm font-bold px-4 py-2 rounded-lg flex items-center gap-1.5">
             <Plus className="w-4 h-4" /> Tambah Pengguna
@@ -129,8 +161,8 @@ export default function Staff() {
       />
 
       <div className="bg-white border border-slate-200 rounded-2xl">
-        <div className="p-4 border-b border-slate-200">
-          <div className="relative max-w-md">
+        <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
@@ -140,6 +172,22 @@ export default function Staff() {
               className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
             />
           </div>
+          <select
+            value={tenantFilter}
+            onChange={(e) => { setTenantFilter(e.target.value); setPage(1); }}
+            className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+          >
+            <option value="">Semua toko</option>
+            {tenants.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+          <select
+            value={roleFilter}
+            onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
+            className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+          >
+            <option value="">Semua role</option>
+            {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+          </select>
         </div>
 
         {error && <div className="m-4 bg-rose-50 border border-rose-200 text-rose-700 text-sm rounded-lg px-3 py-2">{error}</div>}
@@ -150,6 +198,7 @@ export default function Staff() {
               <tr className="text-left text-xs uppercase text-slate-500 border-b border-slate-200 bg-slate-50">
                 <th className="px-4 py-3 font-semibold">Nama</th>
                 <th className="px-4 py-3 font-semibold">Email</th>
+                <th className="px-4 py-3 font-semibold">Toko</th>
                 <th className="px-4 py-3 font-semibold">Role</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
                 <th className="px-4 py-3 font-semibold">Dibuat</th>
@@ -158,9 +207,9 @@ export default function Staff() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">Memuat...</td></tr>
+                <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">Memuat...</td></tr>
               ) : !data || data.items.length === 0 ? (
-                <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-400">Belum ada pengguna.</td></tr>
+                <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-400">Belum ada pengguna.</td></tr>
               ) : (
                 data.items.map((u) => (
                   <tr key={u.id} className="border-b border-slate-100 last:border-b-0 hover:bg-slate-50/60">
@@ -169,6 +218,7 @@ export default function Staff() {
                       {me?.id === u.id && <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">(Anda)</span>}
                     </td>
                     <td className="px-4 py-3 text-slate-600">{u.email}</td>
+                    <td className="px-4 py-3 text-slate-600">{u.tenantName ?? <span className="text-slate-400">Platform</span>}</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs font-bold px-2 py-0.5 rounded ${ROLE_BADGE[u.role] ?? 'bg-slate-100 text-slate-600'}`}>
                         {ROLE_LABEL[u.role] ?? u.role}
@@ -221,9 +271,7 @@ export default function Staff() {
               className={`${inputCls} ${editing ? 'bg-slate-50 text-slate-500' : ''}`}
             />
           </Field>
-          {editing && (
-            <p className="text-[11px] text-slate-400 -mt-1">Email tidak dapat diubah setelah dibuat.</p>
-          )}
+          {editing && <p className="text-[11px] text-slate-400 -mt-1">Email tidak dapat diubah setelah dibuat.</p>}
           <Field label={editing ? 'Password Baru (kosongkan jika tidak diubah)' : 'Password *'}>
             <input
               type="password"
@@ -245,6 +293,18 @@ export default function Staff() {
               {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
             </select>
           </Field>
+          {needsTenant && (
+            <Field label="Toko *">
+              <select
+                value={form.tenantId}
+                onChange={(e) => setForm({ ...form, tenantId: e.target.value })}
+                className={inputCls}
+              >
+                <option value="">— Pilih toko —</option>
+                {tenants.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </Field>
+          )}
           {editing && (
             <label className={`flex items-center gap-2 ${isSelf ? 'opacity-50' : 'cursor-pointer'}`}>
               <input

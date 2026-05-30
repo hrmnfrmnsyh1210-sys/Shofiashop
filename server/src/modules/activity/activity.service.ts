@@ -73,9 +73,10 @@ export const activityService = {
     });
   },
 
-  list: async (tenantId: string, q: ListActivityQuery) => {
+  // Platform-wide listing (SUPER_ADMIN). Pass q.tenantId to narrow to one store.
+  list: async (q: ListActivityQuery) => {
     const where: Prisma.ActivityLogWhereInput = {
-      tenantId,
+      ...(q.tenantId ? { tenantId: q.tenantId } : {}),
       ...(q.action ? { action: { startsWith: q.action } } : {}),
       ...(q.userId ? { userId: q.userId } : {}),
       ...(q.from || q.to
@@ -102,7 +103,10 @@ export const activityService = {
         skip: (q.page - 1) * q.pageSize,
         take: q.pageSize,
         orderBy: { createdAt: 'desc' },
-        include: { user: { select: { id: true, name: true, email: true } } },
+        include: {
+          user: { select: { id: true, name: true, email: true } },
+          tenant: { select: { id: true, name: true, slug: true } },
+        },
       }),
       prisma.activityLog.count({ where }),
     ]);
@@ -121,6 +125,8 @@ export const activityService = {
       userName: r.user?.name ?? null,
       userEmail: r.user?.email ?? r.userEmail,
       userRole: r.userRole,
+      tenantId: r.tenantId,
+      tenantName: r.tenant?.name ?? null,
     }));
 
     return { items, total, page: q.page, pageSize: q.pageSize };

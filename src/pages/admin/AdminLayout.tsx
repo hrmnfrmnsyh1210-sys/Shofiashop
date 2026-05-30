@@ -13,8 +13,6 @@ import {
   Store,
   Menu,
   Settings as SettingsIcon,
-  ScrollText,
-  UserCog,
   X,
 } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
@@ -29,8 +27,6 @@ const ALL_NAV: Array<{ to: string; label: string; icon: typeof LayoutDashboard; 
   { to: '/admin/transactions', label: 'Transaksi', icon: Receipt },
   { to: '/admin/stock', label: 'Stok', icon: Boxes, roles: ['ADMIN', 'MANAGER'] },
   { to: '/admin/reports', label: 'Laporan', icon: LineChart, roles: ['ADMIN', 'MANAGER'] },
-  { to: '/admin/activity', label: 'Log Aktivitas', icon: ScrollText, roles: ['ADMIN', 'MANAGER'] },
-  { to: '/admin/users', label: 'Pengguna & Staf', icon: UserCog, roles: ['ADMIN'] },
   { to: '/admin/settings', label: 'Pengaturan Toko', icon: SettingsIcon, roles: ['ADMIN'] },
 ];
 

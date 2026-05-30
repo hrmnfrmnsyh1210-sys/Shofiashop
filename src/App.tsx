@@ -12,11 +12,12 @@ import Members from './pages/admin/Members';
 import Transactions from './pages/admin/Transactions';
 import Stock from './pages/admin/Stock';
 import Reports from './pages/admin/Reports';
-import ActivityLog from './pages/admin/ActivityLog';
-import Staff from './pages/admin/Staff';
 import Settings from './pages/admin/Settings';
 import SuperLayout from './pages/super/SuperLayout';
+import SuperDashboard from './pages/super/SuperDashboard';
 import Tenants from './pages/super/Tenants';
+import SuperUsers from './pages/super/SuperUsers';
+import SuperActivityLog from './pages/super/SuperActivityLog';
 import ShopLayout from './pages/shop/ShopLayout';
 import ShopHome from './pages/shop/ShopHome';
 import ProductDetail from './pages/shop/ProductDetail';
@@ -53,7 +54,10 @@ export default function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Tenants />} />
+            <Route index element={<SuperDashboard />} />
+            <Route path="tenants" element={<Tenants />} />
+            <Route path="users" element={<SuperUsers />} />
+            <Route path="activity" element={<SuperActivityLog />} />
           </Route>
 
           {/* Store admin */}
@@ -91,22 +95,6 @@ export default function App() {
               element={
                 <ProtectedRoute roles={['ADMIN', 'MANAGER']}>
                   <Reports />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="activity"
-              element={
-                <ProtectedRoute roles={['ADMIN', 'MANAGER']}>
-                  <ActivityLog />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="users"
-              element={
-                <ProtectedRoute roles={['ADMIN']}>
-                  <Staff />
                 </ProtectedRoute>
               }
             />

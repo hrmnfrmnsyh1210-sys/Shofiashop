@@ -1,4 +1,4 @@
-import type { Prisma } from '@prisma/client';
+import type { Prisma, UserRole } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { hashPassword } from '../../lib/password.js';
 import { badRequest, conflict, notFound } from '../../lib/httpError.js';
@@ -8,30 +8,37 @@ import type {
   UpdateUserInput,
 } from './user.schema.js';
 
-const sanitize = (u: {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-  tenantId: string | null;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}) => ({
+type UserWithTenant = Prisma.UserGetPayload<{
+  include: { tenant: { select: { id: true; name: true; slug: true } } };
+}>;
+
+const sanitize = (u: UserWithTenant) => ({
   id: u.id,
   name: u.name,
   email: u.email,
   role: u.role,
   tenantId: u.tenantId,
+  tenantName: u.tenant?.name ?? null,
   isActive: u.isActive,
   createdAt: u.createdAt,
   updatedAt: u.updatedAt,
 });
 
+const tenantInclude = {
+  tenant: { select: { id: true, name: true, slug: true } },
+} as const;
+
+/** A non-super role must belong to a tenant. */
+const resolveTenantId = (role: UserRole, tenantId?: string | null): string | null => {
+  if (role === 'SUPER_ADMIN') return null;
+  if (!tenantId) throw badRequest('Toko wajib dipilih untuk role ini');
+  return tenantId;
+};
+
 export const userService = {
-  list: async (tenantId: string, q: ListUserQuery) => {
+  list: async (q: ListUserQuery) => {
     const where: Prisma.UserWhereInput = {
-      tenantId,
+      ...(q.tenantId ? { tenantId: q.tenantId } : {}),
       ...(q.role ? { role: q.role } : {}),
       ...(q.isActive !== undefined ? { isActive: q.isActive } : {}),
       ...(q.search
@@ -49,21 +56,29 @@ export const userService = {
         skip: (q.page - 1) * q.pageSize,
         take: q.pageSize,
         orderBy: { createdAt: 'desc' },
+        include: tenantInclude,
       }),
       prisma.user.count({ where }),
     ]);
     return { items: rows.map(sanitize), total, page: q.page, pageSize: q.pageSize };
   },
 
-  get: async (tenantId: string, id: string) => {
-    const user = await prisma.user.findFirst({ where: { id, tenantId } });
+  get: async (id: string) => {
+    const user = await prisma.user.findUnique({ where: { id }, include: tenantInclude });
     if (!user) throw notFound('Pengguna tidak ditemukan');
     return sanitize(user);
   },
 
-  create: async (tenantId: string, input: CreateUserInput) => {
+  create: async (input: CreateUserInput) => {
     const existing = await prisma.user.findUnique({ where: { email: input.email } });
     if (existing) throw conflict('Email sudah terdaftar');
+
+    const tenantId = resolveTenantId(input.role, input.tenantId);
+    if (tenantId) {
+      const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+      if (!tenant) throw notFound('Toko tidak ditemukan');
+    }
+
     const user = await prisma.user.create({
       data: {
         tenantId,
@@ -72,33 +87,44 @@ export const userService = {
         role: input.role,
         passwordHash: await hashPassword(input.password),
       },
+      include: tenantInclude,
     });
     return sanitize(user);
   },
 
-  update: async (
-    tenantId: string,
-    id: string,
-    input: UpdateUserInput,
-    actorId: string,
-  ) => {
-    const target = await prisma.user.findFirst({ where: { id, tenantId } });
+  update: async (id: string, input: UpdateUserInput, actorId: string) => {
+    const target = await prisma.user.findUnique({ where: { id } });
     if (!target) throw notFound('Pengguna tidak ditemukan');
-    if (target.role === 'SUPER_ADMIN') throw badRequest('Tidak dapat mengubah super admin');
 
-    // Guard against an admin locking themselves out.
+    // Guard against the acting super admin locking themselves out.
     if (id === actorId) {
       if (input.isActive === false) throw badRequest('Tidak dapat menonaktifkan akun sendiri');
       if (input.role && input.role !== target.role)
         throw badRequest('Tidak dapat mengubah role akun sendiri');
     }
 
+    const nextRole = input.role ?? target.role;
+    // If role/tenant change touches tenant scoping, re-validate.
     const data: Prisma.UserUpdateInput = {
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.role !== undefined ? { role: input.role } : {}),
       ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
       ...(input.password ? { passwordHash: await hashPassword(input.password) } : {}),
     };
+
+    if (input.role !== undefined || input.tenantId !== undefined) {
+      const tenantId = resolveTenantId(
+        nextRole,
+        input.tenantId !== undefined ? input.tenantId : target.tenantId,
+      );
+      if (tenantId) {
+        const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+        if (!tenant) throw notFound('Toko tidak ditemukan');
+        data.tenant = { connect: { id: tenantId } };
+      } else {
+        data.tenant = { disconnect: true };
+      }
+    }
 
     // Revoke active sessions when deactivated or password reset.
     if (input.isActive === false || input.password) {
@@ -108,7 +134,11 @@ export const userService = {
       });
     }
 
-    const user = await prisma.user.update({ where: { id }, data });
+    const user = await prisma.user.update({
+      where: { id },
+      data,
+      include: tenantInclude,
+    });
     return sanitize(user);
   },
 };

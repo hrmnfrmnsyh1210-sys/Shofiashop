@@ -251,6 +251,8 @@ export interface ActivityLog {
   userName: string | null;
   userEmail: string | null;
   userRole: UserRole | null;
+  tenantId: string | null;
+  tenantName: string | null;
 }
 
 export interface StaffUser {
@@ -259,7 +261,26 @@ export interface StaffUser {
   email: string;
   role: UserRole;
   tenantId: string | null;
+  tenantName: string | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface SuperRecentTransaction {
+  id: string;
+  transactionNumber: string;
+  total: string;
+  status: TransactionStatus;
+  channel: TransactionChannel;
+  createdAt: string;
+  tenantId: string;
+  tenantName: string | null;
+}
+
+export interface SuperOverview {
+  tenants: { total: number; active: number };
+  users: { total: number };
+  products: { total: number };
+  recentTransactions: SuperRecentTransaction[];
 }

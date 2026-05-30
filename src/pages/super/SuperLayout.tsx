@@ -1,6 +1,13 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LogOut, ShieldCheck, Store } from 'lucide-react';
+import { LayoutDashboard, LogOut, ScrollText, ShieldCheck, Store, UserCog } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
+
+const NAV = [
+  { to: '/super', label: 'Dashboard', icon: LayoutDashboard, end: true },
+  { to: '/super/tenants', label: 'Toko Berlangganan', icon: Store },
+  { to: '/super/users', label: 'Pengguna & Staf', icon: UserCog },
+  { to: '/super/activity', label: 'Log Aktivitas', icon: ScrollText },
+];
 
 export default function SuperLayout() {
   const { user, logout } = useAuth();
@@ -26,17 +33,20 @@ export default function SuperLayout() {
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-0.5">
-          <NavLink
-            to="/super"
-            end
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
-                isActive ? 'bg-rose-500 text-white' : 'text-slate-300 hover:bg-slate-800'
-              }`
-            }
-          >
-            <Store className="w-4 h-4" /> Toko Berlangganan
-          </NavLink>
+          {NAV.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium ${
+                  isActive ? 'bg-rose-500 text-white' : 'text-slate-300 hover:bg-slate-800'
+                }`
+              }
+            >
+              <item.icon className="w-4 h-4" /> {item.label}
+            </NavLink>
+          ))}
         </nav>
 
         <div className="px-3 py-3 border-t border-slate-800">

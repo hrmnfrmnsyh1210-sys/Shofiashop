@@ -14,7 +14,7 @@ import {
 import { api, ApiError } from '../../lib/api';
 import { PageHeader } from '../../components/PageHeader';
 import { formatDateTime } from '../../lib/format';
-import type { ActivityLog as ActivityLogEntry, PaginatedResponse } from '../../lib/types';
+import type { ActivityLog, PaginatedResponse, Tenant } from '../../lib/types';
 
 const PAGE_SIZE = 25;
 
@@ -55,20 +55,35 @@ function styleFor(action: string): Style {
   return STYLE_BY_PREFIX[prefix] ?? { icon: ActivityIcon, color: 'bg-slate-100 text-slate-600' };
 }
 
-export default function ActivityLog() {
+export default function SuperActivityLog() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('');
+  const [tenantId, setTenantId] = useState('');
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<PaginatedResponse<ActivityLogEntry> | null>(null);
+  const [data, setData] = useState<PaginatedResponse<ActivityLog> | null>(null);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    api
+      .get<PaginatedResponse<Tenant>>('/super/tenants', { query: { page: 1, pageSize: 100 } })
+      .then((r) => setTenants(r.items))
+      .catch(() => setTenants([]));
+  }, []);
 
   const load = async () => {
     setLoading(true);
     setError(null);
     try {
-      const r = await api.get<PaginatedResponse<ActivityLogEntry>>('/activity', {
-        query: { search, action: filter || undefined, page, pageSize: PAGE_SIZE },
+      const r = await api.get<PaginatedResponse<ActivityLog>>('/super/activity', {
+        query: {
+          search,
+          action: filter || undefined,
+          tenantId: tenantId || undefined,
+          page,
+          pageSize: PAGE_SIZE,
+        },
       });
       setData(r);
     } catch (err) {
@@ -82,15 +97,15 @@ export default function ActivityLog() {
     const t = setTimeout(load, 200);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search, filter, page]);
+  }, [search, filter, tenantId, page]);
 
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
       <PageHeader
         title="Log Aktivitas"
-        description="Jejak audit semua aktivitas penting di toko Anda."
+        description="Jejak audit seluruh aktivitas penting di semua toko platform."
       />
 
       <div className="bg-white border border-slate-200 rounded-2xl">
@@ -105,6 +120,14 @@ export default function ActivityLog() {
               className="w-full pl-9 pr-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
             />
           </div>
+          <select
+            value={tenantId}
+            onChange={(e) => { setTenantId(e.target.value); setPage(1); }}
+            className="px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500"
+          >
+            <option value="">Semua toko</option>
+            {tenants.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
           <select
             value={filter}
             onChange={(e) => { setFilter(e.target.value); setPage(1); }}
@@ -140,6 +163,9 @@ export default function ActivityLog() {
                           {ROLE_LABEL[a.userRole] ?? a.userRole}
                         </span>
                       )}
+                      <span className="text-[10px] font-bold bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded">
+                        {a.tenantName ?? 'Platform'}
+                      </span>
                       <span>•</span>
                       <span>{formatDateTime(a.createdAt)}</span>
                     </div>

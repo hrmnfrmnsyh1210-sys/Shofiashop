@@ -110,17 +110,16 @@ export const authService = {
     const ok = await verifyPassword(input.password, user.passwordHash);
     if (!ok) throw unauthorized('Invalid credentials');
     const tokens = await issueTokens(user);
-    // Audit successful logins (skip super admins — no tenant scope to attach to).
-    if (user.tenantId) {
-      void activityService.record({
-        tenantId: user.tenantId,
-        actor: { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId },
-        action: 'auth.login',
-        entityType: 'User',
-        entityId: user.id,
-        summary: `${user.name} masuk ke sistem`,
-      });
-    }
+    // Audit every successful login. tenantId is null for super admins —
+    // those appear as platform-level entries in the audit log.
+    void activityService.record({
+      tenantId: user.tenantId,
+      actor: { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId },
+      action: 'auth.login',
+      entityType: 'User',
+      entityId: user.id,
+      summary: `${user.name} masuk ke sistem`,
+    });
     return {
       user: sanitize(user),
       tenant: user.tenant
