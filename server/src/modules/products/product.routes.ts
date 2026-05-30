@@ -8,6 +8,7 @@ import {
   UpdateProductSchema,
 } from './product.schema.js';
 import { productService } from './product.service.js';
+import { activityService } from '../activity/activity.service.js';
 
 const router = Router();
 
@@ -40,7 +41,14 @@ router.post(
   requireRole('ADMIN', 'MANAGER'),
   validate(CreateProductSchema),
   asyncHandler(async (req, res) => {
-    res.status(201).json(await productService.create(req.tenantId!, req.body));
+    const product = await productService.create(req.tenantId!, req.body);
+    activityService.log(req, {
+      action: 'product.create',
+      entityType: 'Product',
+      entityId: product.id,
+      summary: `Menambah produk "${product.name}" (SKU ${product.sku})`,
+    });
+    res.status(201).json(product);
   }),
 );
 
@@ -49,7 +57,14 @@ router.patch(
   requireRole('ADMIN', 'MANAGER'),
   validate(UpdateProductSchema),
   asyncHandler(async (req, res) => {
-    res.json(await productService.update(req.tenantId!, req.params.id, req.body));
+    const product = await productService.update(req.tenantId!, req.params.id, req.body);
+    activityService.log(req, {
+      action: 'product.update',
+      entityType: 'Product',
+      entityId: product.id,
+      summary: `Memperbarui produk "${product.name}"`,
+    });
+    res.json(product);
   }),
 );
 
@@ -57,7 +72,15 @@ router.delete(
   '/:id',
   requireRole('ADMIN', 'MANAGER'),
   asyncHandler(async (req, res) => {
-    res.json(await productService.remove(req.tenantId!, req.params.id));
+    const product = await productService.get(req.tenantId!, req.params.id);
+    const result = await productService.remove(req.tenantId!, req.params.id);
+    activityService.log(req, {
+      action: 'product.delete',
+      entityType: 'Product',
+      entityId: product.id,
+      summary: `Menghapus produk "${product.name}"`,
+    });
+    res.json(result);
   }),
 );
 

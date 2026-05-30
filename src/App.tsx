@@ -12,6 +12,8 @@ import Members from './pages/admin/Members';
 import Transactions from './pages/admin/Transactions';
 import Stock from './pages/admin/Stock';
 import Reports from './pages/admin/Reports';
+import ActivityLog from './pages/admin/ActivityLog';
+import Staff from './pages/admin/Staff';
 import Settings from './pages/admin/Settings';
 import SuperLayout from './pages/super/SuperLayout';
 import Tenants from './pages/super/Tenants';
@@ -89,6 +91,22 @@ export default function App() {
               element={
                 <ProtectedRoute roles={['ADMIN', 'MANAGER']}>
                   <Reports />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="activity"
+              element={
+                <ProtectedRoute roles={['ADMIN', 'MANAGER']}>
+                  <ActivityLog />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="users"
+              element={
+                <ProtectedRoute roles={['ADMIN']}>
+                  <Staff />
                 </ProtectedRoute>
               }
             />

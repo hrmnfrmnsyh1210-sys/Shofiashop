@@ -8,6 +8,7 @@ import {
   verifyRefreshToken,
 } from '../../lib/jwt.js';
 import { conflict, unauthorized } from '../../lib/httpError.js';
+import { activityService } from '../activity/activity.service.js';
 import { env } from '../../config/env.js';
 import type { RegisterInput, LoginInput } from './auth.schema.js';
 import type { User } from '@prisma/client';
@@ -109,6 +110,17 @@ export const authService = {
     const ok = await verifyPassword(input.password, user.passwordHash);
     if (!ok) throw unauthorized('Invalid credentials');
     const tokens = await issueTokens(user);
+    // Audit successful logins (skip super admins — no tenant scope to attach to).
+    if (user.tenantId) {
+      void activityService.record({
+        tenantId: user.tenantId,
+        actor: { id: user.id, email: user.email, role: user.role, tenantId: user.tenantId },
+        action: 'auth.login',
+        entityType: 'User',
+        entityId: user.id,
+        summary: `${user.name} masuk ke sistem`,
+      });
+    }
     return {
       user: sanitize(user),
       tenant: user.tenant

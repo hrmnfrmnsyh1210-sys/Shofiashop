@@ -80,6 +80,7 @@ model Tenant {
   members        Member[]
   transactions   Transaction[]
   stockMovements StockMovement[]
+  activityLogs   ActivityLog[]
 
   @@index([slug])
   @@index([customDomain])
@@ -101,6 +102,7 @@ model User {
   refreshTokens  RefreshToken[]
   transactions   Transaction[]
   stockMovements StockMovement[]
+  activityLogs   ActivityLog[]
 
   @@index([tenantId])
   @@index([email])
@@ -254,6 +256,31 @@ model TransactionItem {
 
   @@index([transactionId])
   @@index([productId])
+}
+
+model ActivityLog {
+  id         String    @id @default(cuid())
+  // null for platform-level (SUPER_ADMIN) actions
+  tenantId   String?
+  userId     String?
+  // snapshots so the log stays readable even if the user is deleted
+  userEmail  String?
+  userRole   UserRole?
+  action     String // e.g. "product.create", "auth.login"
+  entityType String? // e.g. "Product", "Transaction"
+  entityId   String?
+  summary    String  @db.Text // human-readable, Indonesian
+  metadata   String? @db.Text // optional JSON string
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id])
+  user   User?   @relation(fields: [userId], references: [id])
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
 }
 
 model StockMovement {

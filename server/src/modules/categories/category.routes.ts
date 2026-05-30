@@ -8,6 +8,7 @@ import {
   UpdateCategorySchema,
 } from './category.schema.js';
 import { categoryService } from './category.service.js';
+import { activityService } from '../activity/activity.service.js';
 
 const router = Router();
 
@@ -33,7 +34,14 @@ router.post(
   requireRole('ADMIN', 'MANAGER'),
   validate(CreateCategorySchema),
   asyncHandler(async (req, res) => {
-    res.status(201).json(await categoryService.create(req.tenantId!, req.body));
+    const category = await categoryService.create(req.tenantId!, req.body);
+    activityService.log(req, {
+      action: 'category.create',
+      entityType: 'Category',
+      entityId: category.id,
+      summary: `Menambah kategori "${category.name}"`,
+    });
+    res.status(201).json(category);
   }),
 );
 
@@ -42,7 +50,14 @@ router.patch(
   requireRole('ADMIN', 'MANAGER'),
   validate(UpdateCategorySchema),
   asyncHandler(async (req, res) => {
-    res.json(await categoryService.update(req.tenantId!, req.params.id, req.body));
+    const category = await categoryService.update(req.tenantId!, req.params.id, req.body);
+    activityService.log(req, {
+      action: 'category.update',
+      entityType: 'Category',
+      entityId: category.id,
+      summary: `Memperbarui kategori "${category.name}"`,
+    });
+    res.json(category);
   }),
 );
 
@@ -50,7 +65,15 @@ router.delete(
   '/:id',
   requireRole('ADMIN', 'MANAGER'),
   asyncHandler(async (req, res) => {
-    res.json(await categoryService.remove(req.tenantId!, req.params.id));
+    const category = await categoryService.get(req.tenantId!, req.params.id);
+    const result = await categoryService.remove(req.tenantId!, req.params.id);
+    activityService.log(req, {
+      action: 'category.delete',
+      entityType: 'Category',
+      entityId: category.id,
+      summary: `Menghapus kategori "${category.name}"`,
+    });
+    res.json(result);
   }),
 );
 

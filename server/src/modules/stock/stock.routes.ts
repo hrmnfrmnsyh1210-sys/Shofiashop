@@ -7,6 +7,7 @@ import {
   StockAdjustmentSchema,
 } from './stock.schema.js';
 import { stockService } from './stock.service.js';
+import { activityService } from '../activity/activity.service.js';
 
 const router = Router();
 
@@ -25,9 +26,21 @@ router.post(
   requireRole('ADMIN', 'MANAGER'),
   validate(StockAdjustmentSchema),
   asyncHandler(async (req, res) => {
-    res
-      .status(201)
-      .json(await stockService.adjust(req.tenantId!, req.body, req.user?.id));
+    const movement = await stockService.adjust(req.tenantId!, req.body, req.user?.id);
+    const typeLabel: Record<string, string> = {
+      IN: 'Stok masuk',
+      OUT: 'Stok keluar',
+      ADJUSTMENT: 'Penyesuaian stok',
+      RETURN: 'Retur stok',
+    };
+    activityService.log(req, {
+      action: 'stock.adjust',
+      entityType: 'Product',
+      entityId: movement.productId,
+      summary: `${typeLabel[movement.type] ?? 'Pergerakan stok'} "${movement.product.name}": ${movement.stockBefore} → ${movement.stockAfter}`,
+      metadata: { type: movement.type, quantity: movement.quantity },
+    });
+    res.status(201).json(movement);
   }),
 );
 

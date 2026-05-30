@@ -9,6 +9,7 @@ import {
   UpdateTenantSchema,
 } from './tenant.schema.js';
 import { tenantService } from './tenant.service.js';
+import { activityService } from '../activity/activity.service.js';
 
 // /super/tenants — managed by SUPER_ADMIN
 const superRouter = Router();
@@ -67,7 +68,14 @@ adminRouter.patch(
   '/',
   validate(UpdateOwnTenantSchema),
   asyncHandler(async (req, res) => {
-    res.json(await tenantService.updateOwn(req.tenantId!, req.body));
+    const tenant = await tenantService.updateOwn(req.tenantId!, req.body);
+    activityService.log(req, {
+      action: 'tenant.update',
+      entityType: 'Tenant',
+      entityId: req.tenantId!,
+      summary: 'Memperbarui pengaturan toko',
+    });
+    res.json(tenant);
   }),
 );
 

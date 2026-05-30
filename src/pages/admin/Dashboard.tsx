@@ -6,17 +6,29 @@ import {
   ShoppingBag,
   AlertTriangle,
   ArrowUpRight,
+  Activity as ActivityIcon,
+  Clock,
 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
-import { rupiah, formatDate, toISODate } from '../../lib/format';
+import { rupiah, formatDate, formatDateTime, toISODate } from '../../lib/format';
 import { PageHeader } from '../../components/PageHeader';
 import type {
   ReportSummary,
   TopProduct,
   DailySalesResponse,
   LowStockItem,
+  Transaction,
+  ActivityLog,
+  PaginatedResponse,
 } from '../../lib/types';
+
+const STATUS_BADGE: Record<string, string> = {
+  PAID: 'bg-emerald-50 text-emerald-600',
+  PENDING: 'bg-amber-50 text-amber-600',
+  VOIDED: 'bg-slate-100 text-slate-500',
+  REFUNDED: 'bg-rose-50 text-rose-600',
+};
 
 export default function Dashboard() {
   const { hasRole } = useAuth();
@@ -32,6 +44,8 @@ export default function Dashboard() {
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
   const [daily, setDaily] = useState<DailySalesResponse | null>(null);
   const [lowStock, setLowStock] = useState<LowStockItem[]>([]);
+  const [recentTrx, setRecentTrx] = useState<Transaction[]>([]);
+  const [recentActivity, setRecentActivity] = useState<ActivityLog[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -52,13 +66,17 @@ export default function Dashboard() {
       api.get<TopProduct[]>('/reports/top-products', { query: { from: range.from, to: range.to, limit: 5 } }),
       api.get<DailySalesResponse>('/reports/daily-sales', { query: { from: range.from, to: range.to } }),
       api.get<LowStockItem[]>('/reports/low-stock'),
+      api.get<PaginatedResponse<Transaction>>('/transactions', { query: { page: 1, pageSize: 5 } }),
+      api.get<PaginatedResponse<ActivityLog>>('/activity', { query: { page: 1, pageSize: 6 } }).catch(() => null),
     ])
-      .then(([s, t, d, l]) => {
+      .then(([s, t, d, l, trx, act]) => {
         if (cancelled) return;
         setSummary(s);
         setTopProducts(t);
         setDaily(d);
         setLowStock(l);
+        setRecentTrx(trx.items);
+        setRecentActivity(act?.items ?? []);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -218,6 +236,74 @@ export default function Dashboard() {
             </table>
           </div>
         )}
+      </div>
+
+      {/* Recent activity & transactions */}
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white border border-slate-200 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-purple-500" />
+              <h3 className="font-bold text-slate-900">Transaksi Terbaru</h3>
+            </div>
+            <Link to="/admin/transactions" className="text-xs text-rose-500 font-semibold hover:underline">
+              Semua →
+            </Link>
+          </div>
+          {isLoading ? (
+            <div className="text-slate-400 text-sm">Memuat...</div>
+          ) : recentTrx.length === 0 ? (
+            <div className="text-slate-400 text-sm">Belum ada transaksi.</div>
+          ) : (
+            <div className="space-y-2">
+              {recentTrx.map((t) => (
+                <div key={t.id} className="flex items-center justify-between gap-3 py-1.5">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-slate-900 font-mono truncate">{t.transactionNumber}</div>
+                    <div className="text-xs text-slate-500">{formatDateTime(t.createdAt)}</div>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <div className="text-sm font-bold text-slate-900">{rupiah(t.total)}</div>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${STATUS_BADGE[t.status] ?? 'bg-slate-100 text-slate-500'}`}>
+                      {t.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <ActivityIcon className="w-4 h-4 text-indigo-500" />
+              <h3 className="font-bold text-slate-900">Aktivitas Terbaru</h3>
+            </div>
+            <Link to="/admin/activity" className="text-xs text-rose-500 font-semibold hover:underline">
+              Lihat log →
+            </Link>
+          </div>
+          {isLoading ? (
+            <div className="text-slate-400 text-sm">Memuat...</div>
+          ) : recentActivity.length === 0 ? (
+            <div className="text-slate-400 text-sm">Belum ada aktivitas.</div>
+          ) : (
+            <div className="space-y-3">
+              {recentActivity.map((a) => (
+                <div key={a.id} className="flex items-start gap-3">
+                  <Clock className="w-3.5 h-3.5 text-slate-300 mt-1 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-sm text-slate-900 truncate">{a.summary}</div>
+                    <div className="text-xs text-slate-500">
+                      {(a.userName ?? a.userEmail ?? 'Sistem')} • {formatDateTime(a.createdAt)}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

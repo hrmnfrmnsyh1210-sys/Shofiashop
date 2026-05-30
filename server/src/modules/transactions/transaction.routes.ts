@@ -8,6 +8,7 @@ import {
   UpdateOnlineStatusSchema,
 } from './transaction.schema.js';
 import { transactionService } from './transaction.service.js';
+import { activityService } from '../activity/activity.service.js';
 
 const router = Router();
 
@@ -42,7 +43,14 @@ router.post(
   '/:id/void',
   requireRole('ADMIN', 'MANAGER'),
   asyncHandler(async (req, res) => {
-    res.json(await transactionService.void(req.tenantId!, req.params.id, req.user?.id));
+    const trx = await transactionService.void(req.tenantId!, req.params.id, req.user?.id);
+    activityService.log(req, {
+      action: 'transaction.void',
+      entityType: 'Transaction',
+      entityId: trx.id,
+      summary: `Membatalkan (void) transaksi ${trx.transactionNumber}`,
+    });
+    res.json(trx);
   }),
 );
 
@@ -50,9 +58,18 @@ router.patch(
   '/:id/online-status',
   validate(UpdateOnlineStatusSchema),
   asyncHandler(async (req, res) => {
-    res.json(
-      await transactionService.updateOnlineStatus(req.tenantId!, req.params.id, req.body),
+    const trx = await transactionService.updateOnlineStatus(
+      req.tenantId!,
+      req.params.id,
+      req.body,
     );
+    activityService.log(req, {
+      action: 'transaction.online_status',
+      entityType: 'Transaction',
+      entityId: trx.id,
+      summary: `Mengubah status pesanan ${trx.transactionNumber} → ${trx.onlineStatus}`,
+    });
+    res.json(trx);
   }),
 );
 

@@ -237,3 +237,29 @@ export interface LowStockItem {
   stock: number;
   minStock: number;
 }
+
+export interface ActivityLog {
+  id: string;
+  action: string;
+  entityType: string | null;
+  entityId: string | null;
+  summary: string;
+  metadata: string | null;
+  ipAddress: string | null;
+  createdAt: string;
+  userId: string | null;
+  userName: string | null;
+  userEmail: string | null;
+  userRole: UserRole | null;
+}
+
+export interface StaffUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  tenantId: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
