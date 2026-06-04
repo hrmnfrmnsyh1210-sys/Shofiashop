@@ -56,7 +56,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen lg:grid lg:grid-cols-2 bg-white">
+    <div className="h-screen overflow-hidden lg:grid lg:grid-cols-2 bg-white">
       {/* ── Panel kiri: brand + gradasi pink bertingkat ───────────── */}
       <div className="relative hidden lg:flex flex-col justify-between overflow-hidden bg-gradient-to-br from-rose-400 via-rose-500 to-rose-600 p-12 text-white">
         {/* Layer pink bertingkat */}
@@ -132,7 +132,7 @@ export default function Login() {
       </div>
 
       {/* ── Panel kanan: form ─────────────────────────────────────── */}
-      <div className="relative flex flex-col px-4 sm:px-8 lg:px-12 py-6 overflow-hidden">
+      <div className="relative h-screen lg:h-full flex flex-col px-4 sm:px-8 lg:px-12 py-6 overflow-hidden">
         {/* Aksen pink lembut di belakang (agar tidak polos) */}
         <div className="absolute inset-0 -z-10 pointer-events-none">
           <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-rose-100/60 blur-3xl" />
