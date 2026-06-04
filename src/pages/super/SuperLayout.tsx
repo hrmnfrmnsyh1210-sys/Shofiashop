@@ -27,9 +27,9 @@ export default function SuperLayout() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      <aside className="w-64 bg-slate-900 text-slate-100 flex flex-col">
-        <div className="h-16 flex items-center px-5 border-b border-slate-800">
+    <div className="h-screen overflow-hidden bg-slate-50 flex">
+      <aside className="w-64 h-screen shrink-0 bg-slate-900 text-slate-100 flex flex-col">
+        <div className="h-16 shrink-0 flex items-center px-5 border-b border-slate-800">
           <div className="flex items-center gap-2">
             <div className="bg-rose-500 p-1.5 rounded-lg">
               <ShieldCheck className="w-4 h-4 text-white" />
@@ -40,7 +40,7 @@ export default function SuperLayout() {
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
           {NAV.map((item) => (
             <NavLink
               key={item.to}
@@ -57,7 +57,7 @@ export default function SuperLayout() {
           ))}
         </nav>
 
-        <div className="px-3 py-3 border-t border-slate-800">
+        <div className="shrink-0 px-3 py-3 border-t border-slate-800">
           <div className="px-3 pb-3">
             <div className="text-xs font-semibold truncate">{user?.name}</div>
             <div className="text-xs text-slate-400 truncate">{user?.email}</div>
@@ -74,7 +74,7 @@ export default function SuperLayout() {
         </div>
       </aside>
 
-      <main className="flex-1 overflow-x-hidden">
+      <main className="flex-1 h-screen overflow-y-auto overflow-x-hidden">
         <Outlet />
       </main>
     </div>
