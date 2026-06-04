@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Store,
   Loader2,
   AlertCircle,
   Eye,
@@ -16,6 +15,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { motion } from 'motion/react';
+import { Logo, Wordmark } from '../components/Logo';
 import { useAuth } from '../lib/auth';
 import { ApiError } from '../lib/api';
 import { swalSuccess } from '../lib/swal';
@@ -79,12 +79,10 @@ export default function Login() {
           transition={{ duration: 0.5 }}
           className="relative z-10"
         >
-          <Link to="/" className="inline-flex items-center gap-2">
-            <div className="bg-white/20 backdrop-blur p-2 rounded-xl ring-1 ring-white/30">
-              <Store className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-bold text-xl tracking-tight">
-              ComPos<span className="text-rose-100">.</span>
+          <Link to="/" className="inline-flex">
+            <span className="inline-flex items-center gap-2.5 bg-white/15 backdrop-blur ring-1 ring-white/20 rounded-xl px-4 py-2.5">
+              <Logo className="h-7 w-auto" />
+              <Wordmark className="text-xl" light />
             </span>
           </Link>
         </motion.div>
@@ -142,13 +140,9 @@ export default function Login() {
 
         {/* Header: logo (mobile) + pintasan kembali */}
         <div className="relative z-10 flex items-center justify-between gap-3">
-          <Link to="/" className="flex items-center gap-2 text-slate-700 lg:invisible">
-            <div className="bg-rose-500 p-2 rounded-lg">
-              <Store className="w-4 h-4 text-white" />
-            </div>
-            <span className="font-bold text-lg tracking-tight">
-              ComPos<span className="text-rose-500">.</span>
-            </span>
+          <Link to="/" className="flex items-center gap-2 lg:invisible">
+            <Logo className="h-7 w-auto" />
+            <Wordmark className="text-lg" />
           </Link>
           <Link
             to="/"
@@ -163,22 +157,15 @@ export default function Login() {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="relative z-10 flex-1 flex flex-col justify-center w-full max-w-md mx-auto py-8"
+          className="relative z-10 flex-1 flex flex-col justify-center w-full max-w-md mx-auto py-4"
         >
-          <div className="relative bg-white/80 backdrop-blur-xl border border-rose-100 rounded-3xl shadow-[0_20px_60px_-20px_rgba(244,63,94,0.35)] p-8 sm:p-10">
-            {/* Ikon sambutan */}
+          <div className="relative bg-white/80 backdrop-blur-xl border border-rose-100 rounded-3xl shadow-[0_20px_60px_-20px_rgba(244,63,94,0.35)] p-6 sm:p-8">
+            {/* Logo */}
             <div className="flex justify-center mb-5">
-              <div className="relative">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-rose-400 to-rose-600 flex items-center justify-center shadow-lg shadow-rose-200 animate-float-soft">
-                  <Store className="w-7 h-7 text-white" />
-                </div>
-                <span className="absolute -top-1.5 -right-1.5 w-6 h-6 rounded-full bg-amber-300 flex items-center justify-center text-amber-700 shadow">
-                  <Sparkles className="w-3.5 h-3.5" />
-                </span>
-              </div>
+              <Logo className="h-12 w-auto animate-float-soft" />
             </div>
 
-            <div className="text-center mb-7">
+            <div className="text-center mb-5">
               <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">Selamat datang kembali 👋</h1>
               <p className="text-sm text-slate-500 mt-1.5">Masuk ke dashboard toko Anda.</p>
             </div>
@@ -248,7 +235,7 @@ export default function Login() {
               </button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-slate-100 text-center text-xs text-slate-500">
+            <div className="mt-5 pt-5 border-t border-slate-100 text-center text-xs text-slate-500">
               Belum punya akun?{' '}
               <a href="mailto:hello@compos.com" className="text-rose-500 font-semibold hover:underline">
                 Hubungi kami untuk daftar

@@ -10,11 +10,11 @@ import {
   Boxes,
   LineChart,
   LogOut,
-  Store,
   Menu,
   Settings as SettingsIcon,
   X,
 } from 'lucide-react';
+import { Logo, Wordmark } from '../../components/Logo';
 import { useAuth } from '../../lib/auth';
 import { swalConfirm } from '../../lib/swal';
 import type { UserRole } from '../../lib/types';
@@ -59,10 +59,8 @@ export default function AdminLayout() {
         }`}
       >
         <div className="h-16 shrink-0 flex items-center justify-between px-5 border-b border-slate-200">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="bg-rose-500 p-1.5 rounded-lg shrink-0">
-              <Store className="w-4 h-4 text-white" />
-            </div>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <Logo className="h-7 w-auto shrink-0" />
             <div className="min-w-0">
               <div className="font-bold text-sm tracking-tight text-slate-900 truncate">
                 {tenant?.name ?? 'ComPos'}
@@ -135,10 +133,8 @@ export default function AdminLayout() {
             <Menu className="w-5 h-5" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="bg-rose-500 p-1 rounded">
-              <Store className="w-3 h-3 text-white" />
-            </div>
-            <span className="font-bold text-sm tracking-tight">ComPos</span>
+            <Logo className="h-6 w-auto" />
+            <Wordmark className="text-sm" />
           </div>
         </header>
 

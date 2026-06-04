@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useInView } from 'motion/react';
+import { motion, AnimatePresence, useInView } from 'motion/react';
+import { Logo, Wordmark } from '../components/Logo';
 import {
   Store,
   Smartphone,
@@ -17,6 +18,20 @@ import {
   Sparkles,
   Star,
   Quote,
+  ShoppingBag,
+  Tag,
+  Heart,
+  Gift,
+  CreditCard,
+  Coffee,
+  ShoppingCart,
+  Wallet,
+  Percent,
+  Truck,
+  Bell,
+  Zap,
+  Smile,
+  Boxes,
 } from 'lucide-react';
 
 /** Reveal saat masuk viewport. */
@@ -83,9 +98,84 @@ function Counter({
   );
 }
 
+/** Ikon-ikon lucu yang mengambang di area hero (dekoratif, desktop saja). */
+const FLOATERS = [
+  { icon: ShoppingBag, pos: 'top-28 left-[6%]', chip: 'bg-rose-100 text-rose-500', size: 56, dur: 6, rot: 6 },
+  { icon: Tag, pos: 'top-[42%] left-[9%]', chip: 'bg-amber-100 text-amber-500', size: 48, dur: 7, rot: -8 },
+  { icon: CreditCard, pos: 'bottom-28 left-[13%]', chip: 'bg-white text-rose-500 ring-1 ring-rose-100', size: 52, dur: 6.5, rot: 8 },
+  { icon: Heart, pos: 'top-24 right-[7%]', chip: 'bg-fuchsia-100 text-fuchsia-500', size: 50, dur: 6.8, rot: -6 },
+  { icon: Gift, pos: 'top-[46%] right-[5%]', chip: 'bg-rose-100 text-rose-500', size: 58, dur: 7.2, rot: 7 },
+  { icon: Coffee, pos: 'bottom-32 right-[11%]', chip: 'bg-white text-amber-500 ring-1 ring-amber-100', size: 46, dur: 6.2, rot: -7 },
+  { icon: Star, pos: 'top-[14%] left-[3%]', chip: 'bg-amber-100 text-amber-500', size: 40, dur: 5.6, rot: 10 },
+  { icon: Receipt, pos: 'bottom-[18%] right-[24%]', chip: 'bg-rose-100 text-rose-500', size: 42, dur: 6.4, rot: -9 },
+  { icon: ShoppingCart, pos: 'top-[60%] left-[5%]', chip: 'bg-white text-fuchsia-500 ring-1 ring-fuchsia-100', size: 50, dur: 6.9, rot: 8 },
+  { icon: Wallet, pos: 'top-[12%] right-[20%]', chip: 'bg-rose-100 text-rose-500', size: 44, dur: 6.1, rot: -7 },
+  { icon: Percent, pos: 'top-[68%] right-[8%]', chip: 'bg-amber-100 text-amber-500', size: 46, dur: 5.9, rot: 9 },
+  { icon: Truck, pos: 'bottom-[12%] left-[20%]', chip: 'bg-white text-rose-500 ring-1 ring-rose-100', size: 52, dur: 7.1, rot: -8 },
+  { icon: Bell, pos: 'top-36 left-[16%]', chip: 'bg-fuchsia-100 text-fuchsia-500', size: 42, dur: 6.3, rot: 7 },
+  { icon: Zap, pos: 'top-[30%] right-[14%]', chip: 'bg-amber-100 text-amber-500', size: 44, dur: 5.7, rot: -10 },
+  { icon: Smile, pos: 'bottom-24 right-[18%]', chip: 'bg-rose-100 text-rose-500', size: 48, dur: 6.6, rot: 8 },
+  { icon: Boxes, pos: 'top-[52%] left-[16%]', chip: 'bg-white text-fuchsia-500 ring-1 ring-fuchsia-100', size: 46, dur: 6.7, rot: -6 },
+] as const;
+
+const FLOAT_VISIBLE = 4; // maksimal ikon yang tampil bersamaan
+
+/* ── Ribbon gelombang pink mengalir ────────────────────────────
+ * Banyak garis sinus tipis bertumpuk membentuk pita. Periodik tiap
+ * BIG_WAVE supaya animasi geser horizontal-nya mulus (seamless loop).
+ */
+const BIG_WAVE = 1600;
+const RIP_WAVE = 400;
+const VIEW_W = 1440;
+
+function ribbonPaths(opts: {
+  baseY: number;
+  count: number;
+  gap: number;
+  bigAmp: number;
+  ripAmp: number;
+}) {
+  const { baseY, count, gap, bigAmp, ripAmp } = opts;
+  const out: Array<{ d: string; opacity: number }> = [];
+  for (let i = 0; i < count; i++) {
+    const yOff = (i - (count - 1) / 2) * gap;
+    const pts: string[] = [];
+    for (let x = -BIG_WAVE; x <= VIEW_W + BIG_WAVE; x += RIP_WAVE / 16) {
+      const y =
+        baseY +
+        yOff +
+        bigAmp * Math.sin((x / BIG_WAVE) * Math.PI * 2) +
+        ripAmp * Math.sin((x / RIP_WAVE) * Math.PI * 2 + i * 0.12);
+      pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+    }
+    const opacity = 0.09;
+    out.push({ d: 'M' + pts.join(' L'), opacity });
+  }
+  return out;
+}
+
+const RIBBON_B = ribbonPaths({ baseY: 560, count: 58, gap: 2.8, bigAmp: -130, ripAmp: 28 });
+
 export default function Landing() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [tenantSlug, setTenantSlug] = useState('tokomu');
+
+  // Geser jendela ikon yang tampil: tiap tick satu muncul, satu hilang.
+  const [floatStart, setFloatStart] = useState(0);
+  useEffect(() => {
+    const id = setInterval(
+      () => setFloatStart((s) => (s + 1) % FLOATERS.length),
+      2600,
+    );
+    return () => clearInterval(id);
+  }, []);
+  const activeFloaters = useMemo(() => {
+    const set = new Set<number>();
+    for (let k = 0; k < FLOAT_VISIBLE; k++) {
+      set.add((floatStart + k) % FLOATERS.length);
+    }
+    return set;
+  }, [floatStart]);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-rose-200">
@@ -93,14 +183,10 @@ export default function Landing() {
       <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-2">
-              <div className="bg-rose-500 p-2 rounded-lg">
-                <Store className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-bold text-xl tracking-tight text-slate-800">
-                ComPos<span className="text-rose-500">.</span>
-              </span>
-            </div>
+            <Link to="/" className="flex items-center gap-2">
+              <Logo className="h-8 w-auto" />
+              <Wordmark className="text-xl" />
+            </Link>
 
             {/* Desktop Nav */}
             <div className="hidden md:flex items-center gap-8">
@@ -143,14 +229,48 @@ export default function Landing() {
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 md:pt-40 md:pb-28 px-4 sm:px-6 lg:px-8 overflow-hidden relative">
-        {/* Animated aurora background */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[640px] overflow-hidden -z-10 pointer-events-none">
-          <div className="absolute top-[-20%] left-[15%] w-[500px] h-[500px] rounded-full bg-rose-300/30 blur-[90px] mix-blend-multiply animate-aurora" />
-          <div className="absolute top-[5%] right-[15%] w-[420px] h-[420px] rounded-full bg-fuchsia-200/30 blur-[90px] mix-blend-multiply animate-aurora" style={{ animationDelay: '-5s' }} />
-          <div className="absolute top-[20%] left-[40%] w-[380px] h-[380px] rounded-full bg-amber-200/25 blur-[90px] mix-blend-multiply animate-aurora" style={{ animationDelay: '-9s' }} />
+        {/* Ribbon gelombang pink mengalir (beranimasi) */}
+        <div className="absolute top-0 left-0 w-full h-[420px] sm:h-[560px] md:h-[720px] lg:h-[860px] z-0 overflow-hidden pointer-events-none bg-white">
+          <svg className="w-full h-full" viewBox="0 0 1440 860" preserveAspectRatio="none">
+            {/* Ribbon bawah — mengalir ke kanan */}
+            <g fill="none" stroke="#f43f5e">
+              <animateTransform attributeName="transform" type="translate" from={`-${BIG_WAVE} 0`} to="0 0" dur="24s" repeatCount="indefinite" />
+              {RIBBON_B.map((p, i) => (
+                <path key={i} d={p.d} strokeOpacity={p.opacity} strokeWidth={0.6} vectorEffect="non-scaling-stroke" />
+              ))}
+            </g>
+          </svg>
+          {/* lembutkan transisi ke section berikutnya */}
+          <div className="absolute bottom-0 left-0 w-full h-40 bg-gradient-to-b from-transparent to-slate-50" />
         </div>
 
-        <div className="max-w-7xl mx-auto flex flex-col items-center text-center">
+        {/* Ikon-ikon lucu mengambang — tampil bergantian (sliding window) */}
+        <div className="hidden lg:block absolute inset-0 z-0 pointer-events-none">
+          <AnimatePresence>
+            {FLOATERS.map((f, i) =>
+              activeFloaters.has(i) ? (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1, y: [0, -14, 0], rotate: [0, f.rot, 0] }}
+                  exit={{ opacity: 0, scale: 0.5 }}
+                  transition={{
+                    opacity: { duration: 0.6, ease: 'easeOut' },
+                    scale: { duration: 0.6, ease: [0.16, 1, 0.3, 1] },
+                    y: { duration: f.dur, repeat: Infinity, ease: 'easeInOut' },
+                    rotate: { duration: f.dur, repeat: Infinity, ease: 'easeInOut' },
+                  }}
+                  className={`absolute ${f.pos} ${f.chip} rounded-2xl shadow-lg shadow-rose-200/40 flex items-center justify-center backdrop-blur-sm`}
+                  style={{ width: f.size, height: f.size }}
+                >
+                  <f.icon style={{ width: f.size * 0.42, height: f.size * 0.42 }} />
+                </motion.div>
+              ) : null,
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className="relative z-10 max-w-7xl mx-auto flex flex-col items-center text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -238,7 +358,7 @@ export default function Landing() {
           initial={{ opacity: 0, y: 40 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.4 }}
-          className="mt-20 max-w-5xl mx-auto"
+          className="relative z-10 mt-20 max-w-5xl mx-auto"
         >
           <div className="relative bg-white p-4 rounded-3xl shadow-2xl border border-slate-200">
             <div className="rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 shadow-sm flex flex-col">
@@ -311,13 +431,21 @@ export default function Landing() {
         <div className="relative flex overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
           <div className="flex shrink-0 items-center gap-12 pr-12 animate-marquee">
             {[...Array(2)].flatMap((_, dup) =>
-              ['Coffee Shop', 'Fashion Store', 'Toko Kelontong', 'Apotek', 'Bakery', 'Gadget Store', 'Pet Shop', 'Skincare']
-                .map((name) => (
-                  <div key={`${dup}-${name}`} className="flex items-center gap-2 text-slate-400 font-bold text-lg whitespace-nowrap">
-                    <Store className="w-5 h-5" />
-                    {name}
-                  </div>
-                )),
+              [
+                { name: 'Coffee Shop', color: 'text-amber-500' },
+                { name: 'Fashion Store', color: 'text-pink-500' },
+                { name: 'Toko Kelontong', color: 'text-emerald-500' },
+                { name: 'Apotek', color: 'text-sky-500' },
+                { name: 'Bakery', color: 'text-orange-500' },
+                { name: 'Gadget Store', color: 'text-indigo-500' },
+                { name: 'Pet Shop', color: 'text-teal-500' },
+                { name: 'Skincare', color: 'text-rose-500' },
+              ].map(({ name, color }) => (
+                <div key={`${dup}-${name}`} className={`flex items-center gap-2 ${color} font-bold text-lg whitespace-nowrap`}>
+                  <Store className="w-5 h-5" />
+                  {name}
+                </div>
+              )),
             )}
           </div>
         </div>
@@ -740,12 +868,8 @@ export default function Landing() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
             <div className="col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <div className="bg-rose-500 p-2 rounded-lg">
-                  <Store className="w-4 h-4 text-white" />
-                </div>
-                <span className="font-bold text-xl tracking-tight text-slate-800">
-                  ComPos<span className="text-rose-500">.</span>
-                </span>
+                <Logo className="h-8 w-auto" />
+                <Wordmark className="text-xl" />
               </div>
               <p className="text-sm text-slate-500 max-w-xs leading-relaxed">
                 Platform POS & toko online untuk UMKM Indonesia. Setiap toko, sistemnya sendiri.
