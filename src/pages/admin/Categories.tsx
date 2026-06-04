@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
+import { swalConfirm, swalSuccess, swalError } from '../../lib/swal';
 import { PageHeader } from '../../components/PageHeader';
 import { Modal } from '../../components/Modal';
 import type { Category, PaginatedResponse } from '../../lib/types';
@@ -63,6 +64,7 @@ export default function Categories() {
       else await api.post('/categories', payload);
       setModalOpen(false);
       await load();
+      void swalSuccess(editing ? 'Kategori diperbarui' : 'Kategori ditambahkan');
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Gagal menyimpan kategori');
     } finally {
@@ -71,12 +73,19 @@ export default function Categories() {
   };
 
   const onDelete = async (c: Category) => {
-    if (!confirm(`Nonaktifkan kategori "${c.name}"?`)) return;
+    const ok = await swalConfirm({
+      title: `Nonaktifkan "${c.name}"?`,
+      text: 'Kategori tidak akan tampil di POS dan toko online.',
+      confirmText: 'Ya, nonaktifkan',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await api.delete(`/categories/${c.id}`);
       await load();
+      void swalSuccess('Kategori dinonaktifkan');
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'Gagal menghapus kategori');
+      void swalError(err, 'Gagal menghapus kategori');
     }
   };
 

@@ -1,6 +1,7 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { LayoutDashboard, LogOut, ScrollText, ShieldCheck, Store, UserCog } from 'lucide-react';
 import { useAuth } from '../../lib/auth';
+import { swalConfirm } from '../../lib/swal';
 
 const NAV = [
   { to: '/super', label: 'Dashboard', icon: LayoutDashboard, end: true },
@@ -14,6 +15,13 @@ export default function SuperLayout() {
   const navigate = useNavigate();
 
   const onLogout = async () => {
+    const ok = await swalConfirm({
+      title: 'Keluar dari akun?',
+      text: 'Anda perlu login kembali untuk masuk ke dashboard.',
+      confirmText: 'Ya, keluar',
+      danger: true,
+    });
+    if (!ok) return;
     await logout();
     navigate('/login', { replace: true });
   };

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { CheckCircle2, Clock, Loader2, Upload, AlertCircle } from 'lucide-react';
 import { api, ApiError } from '../lib/api';
+import { swalSuccess } from '../lib/swal';
 import { fileToDataUrl } from '../lib/imageUpload';
 import { formatDateTime } from '../lib/format';
 import type { CustomerOrderStatus, PaymentMethod, TransactionStatus } from '../lib/types';
@@ -93,6 +94,7 @@ export function PaymentProofUpload({
       setPreview(null);
       if (fileRef.current) fileRef.current.value = '';
       onUpdated?.(updated);
+      void swalSuccess('Bukti pembayaran terkirim');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Gagal mengirim bukti pembayaran');
     } finally {

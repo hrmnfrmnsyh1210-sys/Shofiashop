@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { AlertCircle, ExternalLink, Loader2, Pencil, Plus, Power, Search, Store } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
+import { swalConfirm, swalSuccess, swalError } from '../../lib/swal';
 import { PageHeader } from '../../components/PageHeader';
 import { Modal } from '../../components/Modal';
 import type { PaginatedResponse, Tenant } from '../../lib/types';
@@ -133,6 +134,7 @@ export default function Tenants() {
       }
       setOpen(false);
       await load();
+      void swalSuccess(editing ? 'Toko diperbarui' : 'Toko ditambahkan');
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Gagal menyimpan');
     } finally {
@@ -142,12 +144,21 @@ export default function Tenants() {
 
   const toggleActive = async (t: Tenant) => {
     const next = !t.isActive;
-    if (!confirm(`${next ? 'Aktifkan' : 'Nonaktifkan'} toko "${t.name}"?`)) return;
+    const ok = await swalConfirm({
+      title: `${next ? 'Aktifkan' : 'Nonaktifkan'} "${t.name}"?`,
+      text: next
+        ? 'Toko akan bisa kembali diakses.'
+        : 'Toko tidak akan bisa diakses sampai diaktifkan lagi.',
+      confirmText: next ? 'Ya, aktifkan' : 'Ya, nonaktifkan',
+      danger: !next,
+    });
+    if (!ok) return;
     try {
       await api.patch(`/super/tenants/${t.id}`, { isActive: next });
       await load();
+      void swalSuccess(next ? 'Toko diaktifkan' : 'Toko dinonaktifkan');
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'Gagal mengubah status');
+      void swalError(err, 'Gagal mengubah status');
     }
   };
 

@@ -5,6 +5,19 @@ export const rupiah = (value: string | number | null | undefined): string => {
   return `Rp ${n.toLocaleString('id-ID', { maximumFractionDigits: 0 })}`;
 };
 
+/** Versi ringkas untuk grafik/label: Rp 1,2 jt · Rp 950 rb · Rp 3,4 M */
+export const rupiahShort = (value: string | number | null | undefined): string => {
+  if (value === null || value === undefined || value === '') return 'Rp 0';
+  const n = typeof value === 'string' ? Number(value) : value;
+  if (!Number.isFinite(n)) return 'Rp 0';
+  const abs = Math.abs(n);
+  const fmt = (x: number) => x.toLocaleString('id-ID', { maximumFractionDigits: 1 });
+  if (abs >= 1_000_000_000) return `Rp ${fmt(n / 1_000_000_000)} M`;
+  if (abs >= 1_000_000) return `Rp ${fmt(n / 1_000_000)} jt`;
+  if (abs >= 1_000) return `Rp ${fmt(n / 1_000)} rb`;
+  return `Rp ${n.toLocaleString('id-ID', { maximumFractionDigits: 0 })}`;
+};
+
 export const number = (value: string | number | null | undefined): string => {
   if (value === null || value === undefined || value === '') return '0';
   const n = typeof value === 'string' ? Number(value) : value;

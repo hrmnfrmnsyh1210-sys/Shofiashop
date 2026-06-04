@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Plus, Search, Pencil, Coins, Loader2 } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
+import { swalSuccess } from '../../lib/swal';
 import { PageHeader } from '../../components/PageHeader';
 import { Modal } from '../../components/Modal';
 import { formatDate } from '../../lib/format';
@@ -81,6 +82,7 @@ export default function Members() {
       else await api.post('/members', payload);
       setModalOpen(false);
       await load();
+      void swalSuccess(editing ? 'Member diperbarui' : 'Member ditambahkan');
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Gagal menyimpan member');
     } finally {
@@ -102,6 +104,7 @@ export default function Members() {
       setPointsOpen(null);
       setPointsDelta('');
       await load();
+      void swalSuccess('Poin berhasil disesuaikan');
     } catch (err) {
       setPointsError(err instanceof ApiError ? err.message : 'Gagal menyesuaikan poin');
     } finally {

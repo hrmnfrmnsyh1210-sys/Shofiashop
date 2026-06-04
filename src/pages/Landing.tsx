@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'motion/react';
+import { motion, useInView } from 'motion/react';
 import {
   Store,
   Smartphone,
@@ -15,7 +15,73 @@ import {
   Menu,
   X,
   Sparkles,
+  Star,
+  Quote,
 } from 'lucide-react';
+
+/** Reveal saat masuk viewport. */
+function Reveal({
+  children,
+  delay = 0,
+  className,
+}: {
+  children: ReactNode;
+  delay?: number;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: '-80px' }}
+      transition={{ duration: 0.5, delay, ease: [0.16, 1, 0.3, 1] }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/** Angka yang menghitung naik ketika terlihat. */
+function Counter({
+  to,
+  suffix = '',
+  prefix = '',
+  decimals = 0,
+  duration = 1600,
+}: {
+  to: number;
+  suffix?: string;
+  prefix?: string;
+  decimals?: number;
+  duration?: number;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-40px' });
+  const [val, setVal] = useState(0);
+
+  useEffect(() => {
+    if (!inView) return;
+    let raf = 0;
+    const start = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setVal(to * eased);
+      if (t < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [inView, to, duration]);
+
+  return (
+    <span ref={ref}>
+      {prefix}
+      {val.toLocaleString('id-ID', { maximumFractionDigits: decimals, minimumFractionDigits: decimals })}
+      {suffix}
+    </span>
+  );
+}
 
 export default function Landing() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -77,10 +143,11 @@ export default function Landing() {
 
       {/* Hero Section */}
       <section className="pt-32 pb-20 md:pt-40 md:pb-28 px-4 sm:px-6 lg:px-8 overflow-hidden relative">
-        {/* Decorative background blobs */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[500px] overflow-hidden -z-10 pointer-events-none">
-          <div className="absolute top-[-20%] left-[20%] w-[500px] h-[500px] rounded-full bg-rose-100/40 blur-[80px] mix-blend-multiply" />
-          <div className="absolute top-[10%] right-[20%] w-[400px] h-[400px] rounded-full bg-slate-200/40 blur-[80px] mix-blend-multiply" />
+        {/* Animated aurora background */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[640px] overflow-hidden -z-10 pointer-events-none">
+          <div className="absolute top-[-20%] left-[15%] w-[500px] h-[500px] rounded-full bg-rose-300/30 blur-[90px] mix-blend-multiply animate-aurora" />
+          <div className="absolute top-[5%] right-[15%] w-[420px] h-[420px] rounded-full bg-fuchsia-200/30 blur-[90px] mix-blend-multiply animate-aurora" style={{ animationDelay: '-5s' }} />
+          <div className="absolute top-[20%] left-[40%] w-[380px] h-[380px] rounded-full bg-amber-200/25 blur-[90px] mix-blend-multiply animate-aurora" style={{ animationDelay: '-9s' }} />
         </div>
 
         <div className="max-w-7xl mx-auto flex flex-col items-center text-center">
@@ -218,7 +285,15 @@ export default function Landing() {
                   {/* Chart Area */}
                   <div className="flex-1 rounded-xl border border-slate-200 bg-white p-6 flex items-end gap-2 mt-4 shadow-sm">
                     {[40, 70, 45, 90, 65, 80, 50, 100, 75, 85, 60].map((h, i) => (
-                      <div key={i} className="flex-1 bg-slate-200 rounded-t-sm hover:bg-rose-400 transition-all cursor-pointer" style={{ height: `${h}%` }}></div>
+                      <motion.div
+                        key={i}
+                        initial={{ height: 0 }}
+                        animate={{ height: `${h}%` }}
+                        transition={{ duration: 0.7, delay: 0.6 + i * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                        className={`flex-1 rounded-t-sm transition-colors ${
+                          h === 100 ? 'bg-rose-400' : 'bg-slate-200 hover:bg-rose-300'
+                        }`}
+                      />
                     ))}
                   </div>
                 </div>
@@ -226,6 +301,56 @@ export default function Landing() {
             </div>
           </div>
         </motion.div>
+      </section>
+
+      {/* Trust marquee */}
+      <section className="py-8 bg-white border-y border-slate-200 overflow-hidden">
+        <p className="text-center text-xs font-semibold uppercase tracking-widest text-slate-400 mb-6">
+          Dipercaya berbagai jenis usaha
+        </p>
+        <div className="relative flex overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_12%,black_88%,transparent)]">
+          <div className="flex shrink-0 items-center gap-12 pr-12 animate-marquee">
+            {[...Array(2)].flatMap((_, dup) =>
+              ['Coffee Shop', 'Fashion Store', 'Toko Kelontong', 'Apotek', 'Bakery', 'Gadget Store', 'Pet Shop', 'Skincare']
+                .map((name) => (
+                  <div key={`${dup}-${name}`} className="flex items-center gap-2 text-slate-400 font-bold text-lg whitespace-nowrap">
+                    <Store className="w-5 h-5" />
+                    {name}
+                  </div>
+                )),
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Stats band */}
+      <section className="py-16 bg-slate-900 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+        <div className="absolute inset-0 -z-0 opacity-40">
+          <div className="absolute top-0 left-1/4 w-72 h-72 bg-rose-500/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-fuchsia-500/10 rounded-full blur-3xl" />
+        </div>
+        <div className="max-w-5xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 relative z-10">
+          {[
+            { value: 1200, suffix: '+', label: 'Toko aktif', decimals: 0 },
+            { value: 4.9, suffix: '/5', label: 'Rating pengguna', decimals: 1 },
+            { value: 99.9, suffix: '%', label: 'Uptime layanan', decimals: 1 },
+            { value: 10, suffix: ' menit', label: 'Rata-rata setup', decimals: 0 },
+          ].map((s, i) => (
+            <motion.div
+              key={s.label}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: '-80px' }}
+              transition={{ duration: 0.5, delay: i * 0.08, ease: [0.16, 1, 0.3, 1] }}
+              className="text-center"
+            >
+              <div className="text-3xl md:text-4xl font-extrabold text-white tracking-tight">
+                <Counter to={s.value} suffix={s.suffix} decimals={s.decimals} />
+              </div>
+              <div className="text-sm text-slate-400 mt-1">{s.label}</div>
+            </motion.div>
+          ))}
+        </div>
       </section>
 
       {/* Masalah Section */}
@@ -239,7 +364,7 @@ export default function Landing() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="p-8 rounded-2xl bg-white shadow-sm border border-slate-200 hover:border-slate-300 transition-colors">
+            <div className="p-8 rounded-2xl bg-white shadow-sm border border-slate-200 hover:border-rose-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
               <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center mb-6 border border-rose-100">
                 <Receipt className="w-6 h-6" />
               </div>
@@ -250,7 +375,7 @@ export default function Landing() {
               </p>
             </div>
 
-            <div className="p-8 rounded-2xl bg-white shadow-sm border border-slate-200 hover:border-slate-300 transition-colors">
+            <div className="p-8 rounded-2xl bg-white shadow-sm border border-slate-200 hover:border-rose-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
               <div className="w-12 h-12 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center mb-6 border border-slate-200">
                 <Globe className="w-6 h-6" />
               </div>
@@ -261,7 +386,7 @@ export default function Landing() {
               </p>
             </div>
 
-            <div className="p-8 rounded-2xl bg-white shadow-sm border border-slate-200 hover:border-slate-300 transition-colors">
+            <div className="p-8 rounded-2xl bg-white shadow-sm border border-slate-200 hover:border-rose-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
               <div className="w-12 h-12 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center mb-6 border border-rose-100">
                 <BarChart3 className="w-6 h-6" />
               </div>
@@ -306,7 +431,7 @@ export default function Landing() {
                 icon: Smartphone,
               },
             ].map((s) => (
-              <div key={s.step} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:border-rose-200 transition-colors relative">
+              <div key={s.step} className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:border-rose-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 relative">
                 <div className="absolute -top-4 left-8 bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-full">
                   {s.step}
                 </div>
@@ -331,7 +456,7 @@ export default function Landing() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Bento 1 — POS */}
-            <div className="md:col-span-2 bg-slate-50 border border-slate-200 p-8 rounded-3xl relative overflow-hidden group hover:border-slate-300 transition-colors">
+            <div className="md:col-span-2 bg-slate-50 border border-slate-200 p-8 rounded-3xl relative overflow-hidden group hover:border-rose-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
               <div className="absolute right-0 top-0 w-64 h-full bg-gradient-to-l from-rose-50 to-transparent"></div>
               <Store className="w-10 h-10 text-rose-500 mb-6 relative z-10" />
               <h4 className="text-2xl font-bold mb-4 text-slate-800 relative z-10">Aplikasi Kasir (POS)</h4>
@@ -357,7 +482,7 @@ export default function Landing() {
             </div>
 
             {/* Bento 2 — Toko Online subdomain */}
-            <div className="bg-slate-50 border border-slate-200 p-8 rounded-3xl relative overflow-hidden hover:border-slate-300 transition-colors">
+            <div className="bg-slate-50 border border-slate-200 p-8 rounded-3xl relative overflow-hidden hover:border-rose-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
               <Globe className="w-10 h-10 text-rose-500 mb-6" />
               <h4 className="text-2xl font-bold mb-4 text-slate-800">Toko Online Subdomain</h4>
               <p className="text-slate-600 leading-relaxed mb-4">
@@ -373,7 +498,7 @@ export default function Landing() {
             </div>
 
             {/* Bento 3 — Stok */}
-            <div className="bg-slate-50 border border-slate-200 p-8 rounded-3xl relative overflow-hidden hover:border-slate-300 transition-colors">
+            <div className="bg-slate-50 border border-slate-200 p-8 rounded-3xl relative overflow-hidden hover:border-rose-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
               <Package className="w-10 h-10 text-slate-700 mb-6" />
               <h4 className="text-2xl font-bold mb-4 text-slate-800">Stok Terpusat</h4>
               <p className="text-slate-600 leading-relaxed">
@@ -383,7 +508,7 @@ export default function Landing() {
             </div>
 
             {/* Bento 4 — Members */}
-            <div className="bg-slate-50 border border-slate-200 p-8 rounded-3xl relative overflow-hidden hover:border-slate-300 transition-colors">
+            <div className="bg-slate-50 border border-slate-200 p-8 rounded-3xl relative overflow-hidden hover:border-rose-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
               <Users className="w-10 h-10 text-slate-700 mb-6" />
               <h4 className="text-2xl font-bold mb-4 text-slate-800">Database Pelanggan</h4>
               <p className="text-slate-600 leading-relaxed">
@@ -393,7 +518,7 @@ export default function Landing() {
             </div>
 
             {/* Bento 5 — Reports */}
-            <div className="md:col-span-2 bg-slate-50 border border-slate-200 p-8 rounded-3xl relative overflow-hidden hover:border-slate-300 transition-colors">
+            <div className="md:col-span-2 bg-slate-50 border border-slate-200 p-8 rounded-3xl relative overflow-hidden hover:border-rose-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300">
               <BarChart3 className="w-10 h-10 text-rose-500 mb-6" />
               <h4 className="text-2xl font-bold mb-4 text-slate-800">Laporan & Analitik Otomatis</h4>
               <p className="text-slate-600 leading-relaxed max-w-lg mb-8">
@@ -430,6 +555,70 @@ export default function Landing() {
                 ))}
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="py-24 bg-white border-t border-slate-200 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <Reveal className="text-center max-w-3xl mx-auto mb-16">
+            <h2 className="text-rose-500 font-semibold mb-3 tracking-wide text-xs uppercase">Kata Mereka</h2>
+            <h3 className="text-3xl md:text-4xl font-bold text-slate-900 leading-tight">
+              Pemilik Toko yang Sudah Lebih Tenang.
+            </h3>
+          </Reveal>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                quote:
+                  'Dulu rekap penjualan offline dan online bikin pusing tiap malam. Sekarang semua otomatis masuk satu laporan. Hemat 2 jam tiap hari.',
+                name: 'Rina Pertiwi',
+                role: 'Owner, Rina Skincare',
+                initial: 'RP',
+              },
+              {
+                quote:
+                  'Pelanggan tinggal buka link subdomain toko saya, pesan sendiri. Order online naik 40% sejak pakai ComPos. Setup-nya cepat banget.',
+                name: 'Budi Santoso',
+                role: 'Owner, Kopi Senja',
+                initial: 'BS',
+              },
+              {
+                quote:
+                  'Akses bertingkat sangat membantu. Kasir tidak bisa lihat margin, tapi tetap lancar transaksi. Laporan laba real-time bikin keputusan lebih cepat.',
+                name: 'Maya Anggraini',
+                role: 'Owner, Maya Fashion',
+                initial: 'MA',
+              },
+            ].map((t, i) => (
+              <motion.figure
+                key={t.name}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-80px' }}
+                transition={{ duration: 0.5, delay: i * 0.1, ease: [0.16, 1, 0.3, 1] }}
+                className="h-full flex flex-col bg-slate-50 border border-slate-200 rounded-3xl p-8 hover:border-rose-200 hover:shadow-lg hover:-translate-y-1 transition-all duration-300"
+              >
+                <Quote className="w-8 h-8 text-rose-200 mb-4" />
+                <div className="flex gap-0.5 mb-4">
+                  {[...Array(5)].map((_, s) => (
+                    <Star key={s} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                  ))}
+                </div>
+                <blockquote className="text-slate-700 leading-relaxed text-sm flex-1">"{t.quote}"</blockquote>
+                <figcaption className="flex items-center gap-3 mt-6 pt-6 border-t border-slate-200">
+                  <div className="w-10 h-10 rounded-full bg-rose-500 text-white flex items-center justify-center font-bold text-sm shrink-0">
+                    {t.initial}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-bold text-slate-800 text-sm truncate">{t.name}</div>
+                    <div className="text-xs text-slate-500 truncate">{t.role}</div>
+                  </div>
+                </figcaption>
+              </motion.figure>
+            ))}
           </div>
         </div>
       </section>

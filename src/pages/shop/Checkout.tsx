@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { ShoppingBag, ChevronLeft, Loader2, AlertCircle, Truck } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
+import { swalSuccess } from '../../lib/swal';
 import { useCart } from '../../lib/cart';
 import { rupiah } from '../../lib/format';
 import { useStore } from '../../lib/store';
@@ -163,6 +164,7 @@ export default function Checkout() {
         { skipAuth: true },
       );
       clear();
+      void swalSuccess(`Pesanan ${res.orderNumber} berhasil dibuat`);
       navigate(path(`order/${res.orderNumber}`), {
         state: {
           order: res,

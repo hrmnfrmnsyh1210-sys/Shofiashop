@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Eye, Ban, Loader2, X, Truck, MapPin, Save, CheckCircle2, Clock } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
+import { swalConfirm, swalSuccess, swalError } from '../../lib/swal';
 import { PageHeader } from '../../components/PageHeader';
 import { Modal } from '../../components/Modal';
 import { TrackingTimeline } from '../../components/TrackingTimeline';
@@ -95,7 +96,7 @@ export default function Transactions() {
       setDetail(full);
       setResiInput(full.trackingNumber ?? '');
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'Gagal memuat detail');
+      void swalError(err, 'Gagal memuat detail');
     } finally {
       setDetailLoading(false);
     }
@@ -124,6 +125,7 @@ export default function Transactions() {
       );
       setDetail(updated);
       await load();
+      void swalSuccess('Nomor resi disimpan');
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Gagal menyimpan resi');
     } finally {
@@ -133,7 +135,12 @@ export default function Transactions() {
 
   const createShipment = async () => {
     if (!detail) return;
-    if (!confirm('Buat pengiriman & resi otomatis lewat Komship untuk pesanan ini?')) return;
+    const ok = await swalConfirm({
+      title: 'Buat resi otomatis?',
+      text: 'Pengiriman & nomor resi akan dibuat otomatis lewat Komship.',
+      confirmText: 'Ya, buat resi',
+    });
+    if (!ok) return;
     setCreatingShipment(true);
     setActionError(null);
     try {
@@ -141,6 +148,7 @@ export default function Transactions() {
       setDetail(updated);
       setResiInput(updated.trackingNumber ?? '');
       await load();
+      void swalSuccess('Resi otomatis berhasil dibuat');
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Gagal membuat resi otomatis');
     } finally {
@@ -165,12 +173,19 @@ export default function Transactions() {
 
   const onVoid = async () => {
     if (!detail) return;
-    if (!confirm(`Void transaksi ${detail.transactionNumber}? Stok akan dikembalikan.`)) return;
+    const ok = await swalConfirm({
+      title: `Void ${detail.transactionNumber}?`,
+      text: 'Transaksi dibatalkan dan stok akan dikembalikan. Aksi ini tidak bisa diurungkan.',
+      confirmText: 'Ya, void transaksi',
+      danger: true,
+    });
+    if (!ok) return;
     setActionError(null);
     try {
       const updated = await api.post<Transaction>(`/transactions/${detail.id}/void`);
       setDetail(updated);
       await load();
+      void swalSuccess('Transaksi berhasil di-void');
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Gagal void transaksi');
     }
@@ -179,11 +194,15 @@ export default function Transactions() {
   const [confirmingPayment, setConfirmingPayment] = useState(false);
   const confirmPayment = async (action: 'CONFIRM' | 'REJECT') => {
     if (!detail) return;
-    if (
-      action === 'REJECT' &&
-      !confirm('Tolak bukti pembayaran ini? Pelanggan perlu mengunggah ulang buktinya.')
-    )
-      return;
+    if (action === 'REJECT') {
+      const ok = await swalConfirm({
+        title: 'Tolak bukti pembayaran?',
+        text: 'Pelanggan perlu mengunggah ulang bukti pembayarannya.',
+        confirmText: 'Ya, tolak',
+        danger: true,
+      });
+      if (!ok) return;
+    }
     setConfirmingPayment(true);
     setActionError(null);
     try {
@@ -193,6 +212,7 @@ export default function Transactions() {
       );
       setDetail(updated);
       await load();
+      void swalSuccess(action === 'CONFIRM' ? 'Pembayaran dikonfirmasi' : 'Bukti pembayaran ditolak');
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Gagal memproses pembayaran');
     } finally {
@@ -207,6 +227,7 @@ export default function Transactions() {
       const updated = await api.patch<Transaction>(`/transactions/${detail.id}/online-status`, { onlineStatus: next });
       setDetail(updated);
       await load();
+      void swalSuccess('Status pesanan diperbarui');
     } catch (err) {
       setActionError(err instanceof ApiError ? err.message : 'Gagal update status');
     }

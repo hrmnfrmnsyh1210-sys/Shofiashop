@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Plus, Search, Pencil, Loader2, ShieldCheck } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
+import { swalSuccess } from '../../lib/swal';
 import { PageHeader } from '../../components/PageHeader';
 import { Modal } from '../../components/Modal';
 import { formatDate } from '../../lib/format';
@@ -139,6 +140,7 @@ export default function SuperUsers() {
       }
       setModalOpen(false);
       await load();
+      void swalSuccess(editing ? 'Pengguna diperbarui' : 'Pengguna ditambahkan');
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Gagal menyimpan pengguna');
     } finally {

@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Plus, ArrowDownCircle, ArrowUpCircle, RotateCcw, Settings2, Loader2 } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
+import { swalSuccess } from '../../lib/swal';
 import { PageHeader } from '../../components/PageHeader';
 import { Modal } from '../../components/Modal';
 import { formatDateTime } from '../../lib/format';
@@ -97,6 +98,7 @@ export default function Stock() {
       });
       setAdjustOpen(false);
       await load();
+      void swalSuccess('Stok berhasil disesuaikan');
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : err instanceof Error ? err.message : 'Gagal menyimpan');
     } finally {

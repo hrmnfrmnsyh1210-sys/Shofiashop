@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import { AlertCircle, CheckCircle2, Image as ImageIcon, Loader2, Truck, Upload, X } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
+import { swalSuccess } from '../../lib/swal';
 import { PageHeader } from '../../components/PageHeader';
 import { fileToDataUrl, MAX_IMAGE_BYTES } from '../../lib/imageUpload';
 import { DestinationSearch } from '../../components/DestinationSearch';
@@ -151,6 +152,7 @@ export default function Settings() {
       const updated = await api.patch<Tenant>('/admin/tenant', payload);
       setTenant(updated);
       setSuccess('Pengaturan toko disimpan.');
+      void swalSuccess('Pengaturan toko disimpan');
       await refreshMe();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Gagal menyimpan');

@@ -3,6 +3,7 @@ import { Plus, Search, Pencil, Trash2, AlertCircle, Loader2, Upload, Image as Im
 import { api, ApiError } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { rupiah } from '../../lib/format';
+import { swalConfirm, swalSuccess, swalError } from '../../lib/swal';
 import { PageHeader } from '../../components/PageHeader';
 import { Modal } from '../../components/Modal';
 import { Loading } from '../../components/Spinner';
@@ -159,6 +160,7 @@ export default function Products() {
       }
       setModalOpen(false);
       await load();
+      void swalSuccess(editing ? 'Produk diperbarui' : 'Produk ditambahkan');
     } catch (err) {
       setFormError(err instanceof ApiError ? err.message : 'Gagal menyimpan produk');
     } finally {
@@ -167,12 +169,19 @@ export default function Products() {
   };
 
   const onDelete = async (p: Product) => {
-    if (!confirm(`Nonaktifkan produk "${p.name}"?`)) return;
+    const ok = await swalConfirm({
+      title: `Nonaktifkan "${p.name}"?`,
+      text: 'Produk tidak akan tampil di POS dan toko online.',
+      confirmText: 'Ya, nonaktifkan',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await api.delete(`/products/${p.id}`);
       await load();
+      void swalSuccess('Produk dinonaktifkan');
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : 'Gagal menghapus produk');
+      void swalError(err, 'Gagal menghapus produk');
     }
   };
 

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { api, ApiError } from '../../lib/api';
 import { rupiah } from '../../lib/format';
+import { swalSuccess } from '../../lib/swal';
 import type {
   Member,
   PaginatedResponse,
@@ -164,6 +165,7 @@ export default function POS() {
       });
       setLastTrx(trx);
       resetCart();
+      void swalSuccess(`Transaksi ${trx.transactionNumber} berhasil`);
       // Refresh products to reflect new stock
       const fresh = await api.get<PaginatedResponse<Product>>('/products', {
         query: { search, isActive: 'true', pageSize: 24, sort: 'name' },

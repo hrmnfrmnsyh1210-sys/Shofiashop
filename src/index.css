@@ -23,6 +23,28 @@ html {
   to { transform: rotate(360deg); }
 }
 
+/* Aurora blobs untuk hero landing */
+@keyframes aurora {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(6%, -4%) scale(1.12); }
+  66% { transform: translate(-5%, 5%) scale(0.95); }
+}
+.animate-aurora { animation: aurora 14s ease-in-out infinite; }
+
+/* Marquee logo/trust strip */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee { animation: marquee 28s linear infinite; }
+
+/* Floating subtle bob */
+@keyframes float-soft {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.animate-float-soft { animation: float-soft 5s ease-in-out infinite; }
+
 .animate-fade-in {
   animation: fade-in 0.2s ease-out both;
 }
